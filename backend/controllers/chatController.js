@@ -87,11 +87,11 @@ const processMessageData = (msg) => {
 
 const createChat = async (req, res) => {
   try {
-    const { title = 'New Chat', messages = [] } = req.body;
+    const { title = 'New Chat', messages = [], userId = 'default-user' } = req.body;
     
     const chat = new Chat({
       title,
-      userId: req.user._id,
+      userId: userId,
       messages: messages.map(msg => processMessageData(msg))
     });
 
@@ -105,7 +105,8 @@ const createChat = async (req, res) => {
 
 const getChats = async (req, res) => {
   try {
-    const chats = await Chat.find({ userId: req.user._id, isActive: true })
+    const { userId = 'default-user' } = req.query;
+    const chats = await Chat.find({ userId: userId, isActive: true })
       .sort({ updatedAt: -1 })
       .select('title messages createdAt updatedAt');
     
@@ -119,10 +120,11 @@ const getChats = async (req, res) => {
 const getChat = async (req, res) => {
   try {
     const { chatId } = req.params;
+    const { userId = 'default-user' } = req.query;
     
     const chat = await Chat.findOne({ 
       _id: chatId, 
-      userId: req.user._id, 
+      userId: userId, 
       isActive: true 
     });
     
@@ -140,11 +142,11 @@ const getChat = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { content, attachments = [], pdfId, useRAG = false } = req.body;
+    const { content, attachments = [], pdfId, useRAG = false, userId = 'default-user' } = req.body;
     
     const chat = await Chat.findOne({ 
       _id: chatId, 
-      userId: req.user._id, 
+      userId: userId, 
       isActive: true 
     });
     
@@ -257,10 +259,10 @@ const sendMessage = async (req, res) => {
 const updateChat = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { title } = req.body;
+    const { title, userId = 'default-user' } = req.body;
     
     const chat = await Chat.findOneAndUpdate(
-      { _id: chatId, userId: req.user._id, isActive: true },
+      { _id: chatId, userId: userId, isActive: true },
       { title },
       { new: true }
     );
@@ -279,9 +281,10 @@ const updateChat = async (req, res) => {
 const deleteChat = async (req, res) => {
   try {
     const { chatId } = req.params;
+    const { userId = 'default-user' } = req.body;
     
     const chat = await Chat.findOneAndUpdate(
-      { _id: chatId, userId: req.user._id },
+      { _id: chatId, userId: userId },
       { isActive: false },
       { new: true }
     );

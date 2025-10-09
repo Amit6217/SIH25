@@ -15,16 +15,16 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 const RAG_URL = process.env.RAG_URL || 'http://localhost:8000';
 const TEST_PDF_PATH = path.join(__dirname, '../test-sample.pdf');
 
-// Test credentials (you'll need to register a user first)
+// Test credentials (no longer needed - authentication removed)
 const TEST_USER = {
   email: 'test@example.com',
   password: 'testpassword123'
 };
 
-let authToken = null;
+let authToken = null; // No longer used
 
 /**
- * Helper function to make authenticated requests
+ * Helper function to make requests (no authentication required)
  */
 async function makeRequest(method, url, data = null, headers = {}) {
   const config = {
@@ -35,10 +35,6 @@ async function makeRequest(method, url, data = null, headers = {}) {
       ...headers
     }
   };
-
-  if (authToken) {
-    config.headers.Authorization = `Bearer ${authToken}`;
-  }
 
   if (data) {
     config.data = data;
@@ -55,39 +51,11 @@ async function makeRequest(method, url, data = null, headers = {}) {
 }
 
 /**
- * Test user authentication
+ * Test user authentication (no longer needed)
  */
 async function testAuth() {
-  console.log('🔐 Testing authentication...');
-  
-  try {
-    // Try to login first
-    const loginResponse = await makeRequest('POST', '/api/auth/login', {
-      email: TEST_USER.email,
-      password: TEST_USER.password
-    });
-    
-    authToken = loginResponse.token;
-    console.log('✅ Login successful');
-    return true;
-  } catch (error) {
-    console.log('❌ Login failed, trying to register...');
-    
-    try {
-      const registerResponse = await makeRequest('POST', '/api/auth/register', {
-        name: 'Test User',
-        email: TEST_USER.email,
-        password: TEST_USER.password
-      });
-      
-      authToken = registerResponse.token;
-      console.log('✅ Registration successful');
-      return true;
-    } catch (registerError) {
-      console.error('❌ Registration failed:', registerError.message);
-      return false;
-    }
-  }
+  console.log('🔐 Authentication removed - skipping auth test');
+  return true; // Always pass since auth is removed
 }
 
 /**
