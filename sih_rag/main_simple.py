@@ -43,11 +43,11 @@ def read_root():
         "message": "Insurance Claim Evaluator API - Simplified Version",
         "version": "2.2.0-simple",
         "features": {
-            "pdf_upload": "✅ Available",
-            "text_search": "✅ Available", 
-            "session_memory": "✅ Available",
-            "ai_responses": "⚠️ Requires GROQ_API_KEY",
-            "vector_search": "⚠️ Requires ML libraries"
+            "pdf_upload": "Available",
+            "text_search": "Available", 
+            "session_memory": "Available",
+            "ai_responses": "Requires GROQ_API_KEY",
+            "vector_search": "Requires ML libraries"
         }
     }
 
@@ -70,7 +70,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     try:
         # Validate file type
         if not file.filename.endswith('.pdf'):
-            raise HTTPException(status_code=400, detail="❌ Only PDF files allowed")
+            raise HTTPException(status_code=400, detail="Only PDF files allowed")
         
         # Read file content
         content = await file.read()
@@ -80,7 +80,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         if len(content) > max_size:
             raise HTTPException(
                 status_code=400,
-                detail=f"❌ File too large (max {max_size // (1024*1024)}MB)"
+                detail=f"File too large (max {max_size // (1024*1024)}MB)"
             )
         
         # Save to temporary file
@@ -96,19 +96,19 @@ async def upload_pdf(file: UploadFile = File(...)):
         await loop.run_in_executor(None, get_or_create_indexes, pdf_path)
 
         uploaded_pdfs[pdf_id] = pdf_path
-        logger.info(f"✅ PDF uploaded: {pdf_id} ({file.filename})")
+        logger.info(f"PDF uploaded: {pdf_id} ({file.filename})")
         
         return {
             "pdf_id": pdf_id,
             "filename": file.filename,
-            "message": "✅ PDF uploaded & indexed successfully (simplified version)"
+            "message": "PDF uploaded & indexed successfully (simplified version)"
         }
         
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("PDF upload failed")
-        raise HTTPException(status_code=500, detail=f"❌ Failed to upload: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload: {str(e)}")
 
 # === Query PDF Endpoint (WITH SESSION SUPPORT) ===
 @app.post("/pdf/query")
@@ -129,7 +129,7 @@ async def query_pdf(
     if pdf_id not in uploaded_pdfs:
         raise HTTPException(
             status_code=404,
-            detail=f"❌ pdf_id '{pdf_id}' not found. Please upload the PDF first!"
+            detail=f"pdf_id '{pdf_id}' not found. Please upload the PDF first!"
         )
 
     pdf_path = uploaded_pdfs[pdf_id]
@@ -155,7 +155,7 @@ async def query_pdf(
         
     except Exception as e:
         logger.exception(f"Query failed for session '{session_id}'")
-        raise HTTPException(status_code=500, detail=f"❌ Query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
 # === Reset Memory Endpoint ===
 @app.post("/memory/reset")
@@ -169,14 +169,14 @@ async def reset_conversation(session_id: str = Form("default")):
     """
     try:
         reset_memory(session_id)
-        logger.info(f"🧠 Memory cleared for session: {session_id}")
+        logger.info(f"Memory cleared for session: {session_id}")
         return {
-            "message": f"✅ Memory cleared for session: {session_id}",
+            "message": f"Memory cleared for session: {session_id}",
             "session_id": session_id
         }
     except Exception as e:
         logger.exception(f"Failed to reset memory for session '{session_id}'")
-        raise HTTPException(status_code=500, detail=f"❌ Failed to reset memory: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset memory: {str(e)}")
 
 # === Get Session Info ===
 @app.get("/memory/sessions")
@@ -209,7 +209,7 @@ async def delete_pdf(pdf_id: str):
     if pdf_id not in uploaded_pdfs:
         raise HTTPException(
             status_code=404,
-            detail=f"❌ pdf_id '{pdf_id}' not found"
+            detail=f"pdf_id '{pdf_id}' not found"
         )
     
     pdf_path = uploaded_pdfs.pop(pdf_id)
@@ -223,15 +223,15 @@ async def delete_pdf(pdf_id: str):
         if pdf_path in pdf_cache:
             del pdf_cache[pdf_path]
         
-        logger.info(f"🗑️ Deleted PDF: {pdf_id}")
+        logger.info(f"Deleted PDF: {pdf_id}")
         return {
-            "message": f"✅ Deleted {pdf_id}",
+            "message": f"Deleted {pdf_id}",
             "pdf_id": pdf_id
         }
         
     except Exception as e:
         logger.exception(f"Failed to delete PDF '{pdf_id}'")
-        raise HTTPException(status_code=500, detail=f"❌ Failed to delete: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
 
 # === List Uploaded PDFs ===
 @app.get("/pdf/list")
