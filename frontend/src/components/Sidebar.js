@@ -1,14 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, MessageSquare, Settings, LogOut, User } from 'lucide-react';
+import { Plus, MessageSquare, Settings, LogOut, User, Trash2 } from 'lucide-react';
+import api from '../utils/api';
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleNewChat = () => {
-    // Create new chat logic
-    console.log('New chat clicked');
+  // Fetch chats on component mount
+  useEffect(() => {
+    fetchChats();
+  }, []);
+
+  const fetchChats = async () => {
+    try {
+      const response = await api.get('/chats');
+      setChats(response.data);
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+    }
+  };
+
+  const handleNewChat = async () => {
+    try {
+      setLoading(true);
+      const response = await api.post('/chats', { title: 'New Chat' });
+      const newChat = response.data;
+      
+      // Add the new chat to the list
+      setChats(prev => [newChat, ...prev]);
+      
+      // Navigate to the new chat
+      navigate(`/chat/${newChat._id}`);
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChatClick = (chatId) => {
+    navigate(`/chat/${chatId}`);
+  };
+
+  const handleDeleteChat = async (chatId, e) => {
+    e.stopPropagation(); // Prevent chat selection when deleting
+    try {
+      await api.delete(`/chats/${chatId}`);
+      setChats(prev => prev.filter(chat => chat._id !== chatId));
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -21,10 +66,11 @@ const Sidebar = () => {
       <div className="p-4 border-b border-gray-200">
         <button
           onClick={handleNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Plus className="h-4 w-4" />
-          New Chat
+          {loading ? 'Creating...' : 'New Chat'}
         </button>
       </div>
 
@@ -40,14 +86,22 @@ const Sidebar = () => {
           ) : (
             chats.map((chat) => (
               <div
-                key={chat.id}
-                className="p-3 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                key={chat._id}
+                onClick={() => handleChatClick(chat._id)}
+                className="group p-3 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-700 truncate">
+                  <span className="text-sm text-gray-700 truncate flex-1">
                     {chat.title}
                   </span>
+                  <button
+                    onClick={(e) => handleDeleteChat(chat._id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
+                    title="Delete chat"
+                  >
+                    <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                  </button>
                 </div>
               </div>
             ))

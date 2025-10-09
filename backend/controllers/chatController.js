@@ -2,12 +2,17 @@ const Chat = require('../models/Chat');
 
 const createChat = async (req, res) => {
   try {
-    const { title = 'New Chat' } = req.body;
+    const { title = 'New Chat', messages = [] } = req.body;
     
     const chat = new Chat({
       title,
       userId: req.user._id,
-      messages: []
+      messages: messages.map(msg => ({
+        content: msg.content,
+        role: msg.role,
+        timestamp: msg.timestamp || new Date(),
+        attachments: msg.attachments || []
+      }))
     });
 
     await chat.save();
