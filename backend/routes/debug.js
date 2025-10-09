@@ -1,108 +1,124 @@
 const express = require('express');
 const router = express.Router();
-const { debugMessageData, testMessageProcessing } = require('../utils/chatDebug');
+const Chat = require('../models/Chat');
 const auth = require('../middleware/auth');
 
-// Debug route to test message processing
-router.post('/debug/message', auth, (req, res) => {
+// Debug endpoint to test message processing and schema validation
+router.post('/test-message-processing', auth, async (req, res) => {
   try {
-    const { message } = req.body;
+    const { content, attachments } = req.body;
     
-    if (!message) {
-      return res.status(400).json({ message: 'Message data is required' });
-    }
-
-    // Debug the incoming message
-    debugMessageData(message, 'Incoming Message');
+    console.log('🧪 Testing message processing with data:');
+    console.log('Content:', content);
+    console.log('Attachments type:', typeof attachments);
+    console.log('Attachments value:', attachments);
     
-    // Test the message processing logic
+    // Test the processMessageData function
     const { processMessageData } = require('../controllers/chatController');
     
+    let processedMessage;
     try {
-      const processedMessage = processMessageData(message);
-      res.json({
-        success: true,
-        original: message,
-        processed: processedMessage,
-        message: 'Message processed successfully'
+      processedMessage = processMessageData({
+        content: content || 'Test message',
+        role: 'user',
+        attachments: attachments || [],
+        timestamp: new Date()
       });
+      console.log('✅ Message processing successful:', processedMessage);
     } catch (error) {
-      res.status(400).json({
+      console.error('❌ Message processing failed:', error.message);
+      return res.status(400).json({
         success: false,
-        original: message,
         error: error.message,
-        message: 'Message processing failed'
+        step: 'message_processing'
       });
     }
     
-  } catch (error) {
-    console.error('Debug endpoint error:', error);
-    res.status(500).json({ message: 'Debug endpoint error', error: error.message });
-  }
-});
-
-// Test all message processing scenarios
-router.get('/debug/test-scenarios', auth, (req, res) => {
-  try {
-    testMessageProcessing();
-    res.json({ message: 'Test scenarios completed, check console logs' });
-  } catch (error) {
-    res.status(500).json({ message: 'Test scenarios failed', error: error.message });
-  }
-});
-
-// Test chat creation with various message formats
-router.post('/debug/test-chat-creation', auth, async (req, res) => {
-  try {
-    const { messages } = req.body;
-    
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ message: 'Messages array is required' });
-    }
-
-    // Debug each message
-    messages.forEach((msg, index) => {
-      debugMessageData(msg, `Message ${index + 1}`);
-    });
-
-    // Try to create a chat with these messages
-    const Chat = require('../models/Chat');
-    const { processMessageData } = require('../controllers/chatController');
-    
-    const chat = new Chat({
-      title: 'Debug Test Chat',
-      userId: req.user._id,
-      messages: messages.map(msg => processMessageData(msg))
-    });
-
-    // Don't save, just validate
-    const validationError = chat.validateSync();
-    
-    if (validationError) {
-      res.status(400).json({
-        success: false,
-        validationError: validationError.message,
-        errors: validationError.errors
+    // Test creating a new chat with this message
+    try {
+      const testChat = new Chat({
+        title: 'Debug Test Chat',
+        userId: req.user._id,
+        messages: [processedMessage]
       });
-    } else {
+      
+      console.log('📋 Test chat created, validating...');
+      const validationError = testChat.validateSync();
+      
+      if (validationError) {
+        console.error('❌ Chat validation failed:', validationError);
+        return res.status(400).json({
+          success: false,
+          error: 'Chat validation failed',
+          validationError: validationError.message,
+          validationDetails: validationError.errors,
+          step: 'chat_validation'
+        });
+      }
+      
+      console.log('✅ Chat validation successful');
+      
+      // Try to save (but don't actually save)
+      console.log('📋 Chat data that would be saved:');
+      console.log('Messages count:', testChat.messages.length);
+      console.log('First message:', JSON.stringify(testChat.messages[0], null, 2));
+      
       res.json({
         success: true,
-        message: 'Chat validation passed',
+        message: 'All tests passed',
+        processedMessage: processedMessage,
         chatData: {
-          title: chat.title,
-          messageCount: chat.messages.length,
-          messages: chat.messages.map(msg => ({
-            content: msg.content,
-            role: msg.role,
-            attachmentsCount: msg.attachments.length
-          }))
+          title: testChat.title,
+          messageCount: testChat.messages.length,
+          firstMessage: testChat.messages[0]
         }
       });
+      
+    } catch (error) {
+      console.error('❌ Chat creation failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+        step: 'chat_creation'
+      });
     }
     
   } catch (error) {
-    console.error('Debug chat creation error:', error);
-    res.status(500).json({ message: 'Debug chat creation failed', error: error.message });
+    console.error('❌ Debug endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      step: 'general_error'
+    });
+  }
+});
+
+// Test endpoint to check the actual schema
+router.get('/test-schema', auth, (req, res) => {
+  try {
+    const schema = Chat.schema;
+    const messagesSchema = schema.paths.messages;
+    const attachmentsSchema = messagesSchema.schema.paths.attachments;
+    
+    console.log('📋 Schema analysis:');
+    console.log('Messages schema type:', messagesSchema.instance);
+    console.log('Attachments schema type:', attachmentsSchema.instance);
+    console.log('Attachments schema:', attachmentsSchema.schema);
+    
+    res.json({
+      success: true,
+      schema: {
+        messagesType: messagesSchema.instance,
+        attachmentsType: attachmentsSchema.instance,
+        attachmentsSchema: attachmentsSchema.schema
+      }
+    });
+  } catch (error) {
+    console.error('❌ Schema test error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
