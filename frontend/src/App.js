@@ -69,7 +69,7 @@ function AppContent() {
           >
             <Menu className="h-6 w-6" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-800 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">ChatGPT Clone</h1>
+          <h1 className="text-lg font-semibold text-gray-800 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">LegalEase</h1>
           <div className="w-10"></div> {/* Spacer for centering */}
         </div>
         

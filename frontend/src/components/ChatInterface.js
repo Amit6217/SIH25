@@ -262,7 +262,7 @@ const ChatInterface = () => {
       <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8 lg:py-12">
-            <h2 className="text-xl font-medium mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Welcome to ChatGPT Clone</h2>
+            <h2 className="text-xl font-medium mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Welcome to LegalEase</h2>
             <p className="text-gray-400">Start a conversation by typing a message below</p>
           </div>
         ) : (
@@ -380,7 +380,7 @@ const ChatInterface = () => {
                 isListening 
                   ? 'border-red-300 bg-red-50/80 shadow-lg' 
                   : 'border-white/20 bg-white/80 hover:bg-white/90 hover:shadow-lg'
-              }`}
+              } border-gray-800`} // <-- Added dark border
               rows="1"
               style={{ minHeight: '40px', maxHeight: '120px' }}
             />

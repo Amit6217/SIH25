@@ -155,10 +155,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
         
         <div className="space-y-1">
-          <button className="w-full flex items-center gap-2 px-3 py-3 text-sm text-gray-700 hover:bg-white/60 hover:text-gray-900 rounded-xl transition-all duration-300 touch-manipulation hover:scale-[1.02] active:scale-[0.98] backdrop-blur-sm border border-transparent hover:border-white/20">
-            <Settings className="h-4 w-4" />
-            Settings
-          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-3 py-3 text-sm text-gray-700 hover:bg-white/60 hover:text-gray-900 rounded-xl transition-all duration-300 touch-manipulation hover:scale-[1.02] active:scale-[0.98] backdrop-blur-sm border border-transparent hover:border-white/20"
