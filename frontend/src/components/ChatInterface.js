@@ -13,9 +13,10 @@ const ChatInterface = () => {
   const [attachments, setAttachments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatTitle, setChatTitle] = useState('New Chat');
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const messagesEndRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  const speechRecognitionRef = useRef(null);
 
   // Load chat data when chatId changes
   useEffect(() => {
@@ -27,6 +28,70 @@ const ChatInterface = () => {
       setChatTitle('New Chat');
     }
   }, [chatId]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      setSpeechSupported(true);
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      speechRecognitionRef.current = new SpeechRecognition();
+      
+      speechRecognitionRef.current.continuous = false;
+      speechRecognitionRef.current.interimResults = true;
+      speechRecognitionRef.current.lang = 'en-US';
+      speechRecognitionRef.current.maxAlternatives = 1;
+
+      speechRecognitionRef.current.onstart = () => {
+        setIsListening(true);
+      };
+
+      speechRecognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          }
+        }
+
+        // Only add final results to avoid duplicate text
+        if (finalTranscript) {
+          setInputMessage(prev => {
+            // Add space if there's existing text
+            return prev + (prev ? ' ' : '') + finalTranscript;
+          });
+        }
+      };
+
+      speechRecognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        
+        // Show user-friendly error messages
+        if (event.error === 'not-allowed') {
+          alert('Microphone access denied. Please allow microphone access to use voice input.');
+        } else if (event.error === 'no-speech') {
+          console.log('No speech detected');
+        } else if (event.error === 'network') {
+          alert('Network error occurred during speech recognition. Please check your internet connection.');
+        }
+      };
+
+      speechRecognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    } else {
+      setSpeechSupported(false);
+      console.warn('Speech recognition not supported in this browser');
+    }
+
+    return () => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const loadChat = async () => {
     try {
@@ -74,44 +139,21 @@ const ChatInterface = () => {
     setAttachments(prev => prev.filter(att => att.id !== id));
   };
 
-  const startRecording = () => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        mediaRecorderRef.current = new MediaRecorder(stream);
-        audioChunksRef.current = [];
-
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          audioChunksRef.current.push(event.data);
-        };
-
-        mediaRecorderRef.current.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-          const audioFile = new File([audioBlob], 'voice-message.wav', { type: 'audio/wav' });
-          
-          const voiceAttachment = {
-            id: Date.now(),
-            file: audioFile,
-            name: 'Voice Message',
-            type: 'audio',
-            size: audioFile.size
-          };
-          
-          setAttachments(prev => [...prev, voiceAttachment]);
-          stream.getTracks().forEach(track => track.stop());
-        };
-
-        mediaRecorderRef.current.start();
-        setIsRecording(true);
-      })
-      .catch(error => {
-        console.error('Error accessing microphone:', error);
-      });
+  const startVoiceInput = () => {
+    if (speechRecognitionRef.current && !isListening) {
+      try {
+        speechRecognitionRef.current.start();
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        setIsListening(false);
+      }
+    }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+  const stopVoiceInput = () => {
+    if (speechRecognitionRef.current && isListening) {
+      speechRecognitionRef.current.stop();
+      setIsListening(false);
     }
   };
 
@@ -140,6 +182,18 @@ const ChatInterface = () => {
         
         // Update messages with the response from server
         setMessages(response.data.chat.messages);
+        
+        // Update chat title if it's empty and this is the first user message
+        const updatedChat = response.data.chat;
+        if (!updatedChat.title && updatedChat.messages.length > 0) {
+          const firstUserMessage = updatedChat.messages.find(msg => msg.role === 'user');
+          if (firstUserMessage) {
+            const newTitle = firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
+            // Update chat title
+            await api.put(`/chats/${chatId}`, { title: newTitle });
+            setChatTitle(newTitle);
+          }
+        }
       } else {
         // Create new chat with first message
         const response = await api.post('/chats', {
@@ -199,8 +253,8 @@ const ChatInterface = () => {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 p-4">
+      {/* Header - Hidden on mobile, shown on desktop */}
+      <div className="hidden lg:block border-b border-gray-200 p-4">
         <h1 className="text-lg font-semibold text-gray-900">{chatTitle}</h1>
       </div>
 
@@ -293,32 +347,50 @@ const ChatInterface = () => {
             </button>
           </div>
 
-          {/* Voice Recording */}
+          {/* Voice Input */}
           <button
             type="button"
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            onMouseLeave={stopRecording}
+            onClick={isListening ? stopVoiceInput : startVoiceInput}
+            disabled={!speechSupported}
             className={`p-2 rounded-lg transition-colors ${
-              isRecording
+              !speechSupported
+                ? 'text-gray-300 cursor-not-allowed'
+                : isListening
                 ? 'text-red-600 bg-red-100 hover:bg-red-200'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
+            title={
+              !speechSupported 
+                ? 'Voice input not supported in this browser' 
+                : isListening 
+                ? 'Stop voice input' 
+                : 'Start voice input'
+            }
           >
-            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
 
           {/* Text Input */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
             <textarea
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              placeholder={isListening ? "Listening... Speak now" : "Type your message..."}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${
+                isListening 
+                  ? 'border-red-300 bg-red-50' 
+                  : 'border-gray-300'
+              }`}
               rows="1"
               style={{ minHeight: '40px', maxHeight: '120px' }}
             />
+            {isListening && (
+              <div className="absolute top-2 right-2 flex items-center gap-1">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-red-600 font-medium">Listening</span>
+              </div>
+            )}
           </div>
 
           {/* Send Button */}
