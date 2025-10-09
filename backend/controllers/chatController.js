@@ -99,6 +99,28 @@ const sendMessage = async (req, res) => {
   }
 };
 
+const updateChat = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { title } = req.body;
+    
+    const chat = await Chat.findOneAndUpdate(
+      { _id: chatId, userId: req.user._id, isActive: true },
+      { title },
+      { new: true }
+    );
+    
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+    
+    res.json(chat);
+  } catch (error) {
+    console.error('Update chat error:', error);
+    res.status(500).json({ message: 'Server error updating chat' });
+  }
+};
+
 const deleteChat = async (req, res) => {
   try {
     const { chatId } = req.params;
@@ -125,5 +147,6 @@ module.exports = {
   getChats,
   getChat,
   sendMessage,
+  updateChat,
   deleteChat
 };
