@@ -1,4 +1,5 @@
 const Chat = require('../models/Chat');
+const { queryPDF } = require('./ragController');
 
 const createChat = async (req, res) => {
   try {
@@ -60,7 +61,7 @@ const getChat = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { content, attachments = [] } = req.body;
+    const { content, attachments = [], pdfId, useRAG = false } = req.body;
     
     const chat = await Chat.findOne({ 
       _id: chatId, 
@@ -77,22 +78,84 @@ const sendMessage = async (req, res) => {
       content,
       role: 'user',
       timestamp: new Date(),
-      attachments
+      attachments,
+      metadata: {
+        pdfId: pdfId || null,
+        useRAG: useRAG || false
+      }
     };
     
     chat.messages.push(userMessage);
     
-    // Simulate AI response (in a real app, you'd call an AI service)
-    const aiResponse = {
-      content: `I received your message: "${content}". This is a simulated AI response. In a real implementation, this would be processed by an AI service like OpenAI's GPT.`,
-      role: 'assistant',
-      timestamp: new Date()
-    };
+    let aiResponse;
+    
+    // If RAG is enabled and PDF ID is provided, use RAG service
+    if (useRAG && pdfId) {
+      try {
+        // Create a mock request/response for RAG controller
+        const ragReq = {
+          body: {
+            pdfId: pdfId,
+            question: content,
+            sessionId: chatId // Use chatId as sessionId for conversation continuity
+          }
+        };
+        
+        const ragRes = {
+          json: (data) => {
+            aiResponse = {
+              content: data.answer,
+              role: 'assistant',
+              timestamp: new Date(),
+              metadata: {
+                ragMetadata: data.metadata,
+                sessionId: data.sessionId,
+                source: 'RAG'
+              }
+            };
+          },
+          status: (code) => ({
+            json: (data) => {
+              throw new Error(`RAG service error: ${data.message || 'Unknown error'}`);
+            }
+          })
+        };
+        
+        await queryPDF(ragReq, ragRes);
+        
+      } catch (ragError) {
+        console.error('RAG query failed:', ragError);
+        // Fallback to regular AI response if RAG fails
+        aiResponse = {
+          content: `I received your message: "${content}". RAG processing failed, but I'm here to help with your question.`,
+          role: 'assistant',
+          timestamp: new Date(),
+          metadata: {
+            source: 'fallback',
+            ragError: ragError.message
+          }
+        };
+      }
+    } else {
+      // Regular AI response (simulated)
+      aiResponse = {
+        content: `I received your message: "${content}". This is a simulated AI response. In a real implementation, this would be processed by an AI service like OpenAI's GPT.`,
+        role: 'assistant',
+        timestamp: new Date(),
+        metadata: {
+          source: 'simulated'
+        }
+      };
+    }
     
     chat.messages.push(aiResponse);
     await chat.save();
     
-    res.json({ message: 'Message sent successfully', chat });
+    res.json({ 
+      message: 'Message sent successfully', 
+      chat,
+      aiResponse: aiResponse
+    });
   } catch (error) {
     console.error('Send message error:', error);
     res.status(500).json({ message: 'Server error sending message' });
