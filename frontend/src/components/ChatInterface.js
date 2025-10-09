@@ -334,7 +334,7 @@ const ChatInterface = () => {
 
       {/* Input Area */}
       <div className="border-t border-white/20 p-2 lg:p-4 bg-white/60 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 lg:gap-2 gap-1"> {/* Reduced gap on mobile */}
           {/* File Upload */}
           <div {...getRootProps()} className="cursor-pointer">
             <input {...getInputProps()} />
@@ -375,7 +375,7 @@ const ChatInterface = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={isListening ? "Listening... Speak now" : "Type your message..."}
+              placeholder="Type here ..." // <-- Changed placeholder
               className={`w-full px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none backdrop-blur-sm transition-all duration-300 ${
                 isListening 
                   ? 'border-red-300 bg-red-50/80 shadow-lg' 
