@@ -1,6 +1,6 @@
-# ChatGPT Clone Frontend
+# LegalEase Frontend
 
-A React frontend application for the ChatGPT Clone with modern UI, file upload, voice input, and real-time messaging.
+A React frontend application for the LegalEase with modern UI, file upload, voice input, and real-time messaging.
 
 ## Features
 

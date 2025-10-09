@@ -1,6 +1,6 @@
-# ChatGPT Clone
+# LegalEase
 
-A full-stack ChatGPT clone built with React, Node.js, and MongoDB featuring user authentication, real-time messaging, file uploads, and voice input.
+A full-stack LegalEase built with React, Node.js, and MongoDB featuring user authentication, real-time messaging, file uploads, and voice input.
 
 ## 🚀 Features
 
