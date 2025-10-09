@@ -27,10 +27,22 @@ const chatSchema = new mongoose.Schema({
       default: Date.now
     },
     attachments: [{
-      name: String,
-      type: String,
-      url: String,
-      size: Number
+      name: {
+        type: String,
+        required: true
+      },
+      type: {
+        type: String,
+        required: true
+      },
+      url: {
+        type: String,
+        default: ''
+      },
+      size: {
+        type: Number,
+        default: 0
+      }
     }]
   }],
   isActive: {
