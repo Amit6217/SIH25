@@ -5,48 +5,57 @@ const { queryPDF } = require('./ragController');
  * Helper function to validate and process message data
  */
 const processMessageData = (msg) => {
-  console.log('🔍 Processing message data:', JSON.stringify(msg, null, 2));
-  
   // Ensure content is not empty
   if (!msg.content || msg.content.trim() === '') {
-    console.error('❌ Content validation failed:', msg.content);
     throw new Error('Message content is required and cannot be empty');
   }
 
   // Handle attachments properly
   let attachments = [];
   if (msg.attachments) {
-    console.log('📎 Processing attachments:', typeof msg.attachments, msg.attachments);
-    
     // If attachments is a string, try to parse it
     if (typeof msg.attachments === 'string') {
       try {
         // Handle both JSON string and simple string cases
         if (msg.attachments.startsWith('[') || msg.attachments.startsWith('{')) {
-          attachments = JSON.parse(msg.attachments);
+          // Clean the string by removing extra spaces and fixing common issues
+          let cleanedString = msg.attachments.trim();
+          
+          // Fix common JSON issues
+          cleanedString = cleanedString
+            .replace(/\[\s*\{/g, '[{')  // Remove spaces after opening bracket
+            .replace(/\}\s*\]/g, '}]')  // Remove spaces before closing bracket
+            .replace(/,\s*\}/g, '}')    // Remove trailing commas
+            .replace(/,\s*\]/g, ']')    // Remove trailing commas in arrays
+            .replace(/\{\s*/g, '{')    // Remove spaces after opening brace
+            .replace(/\s*\}/g, '}');   // Remove spaces before closing brace
+          
+          attachments = JSON.parse(cleanedString);
         } else {
           // If it's a simple string, wrap it in an array
           attachments = [msg.attachments];
         }
-        console.log('✅ Parsed string attachments:', attachments);
       } catch (parseError) {
-        console.warn('❌ Failed to parse attachments string:', msg.attachments, parseError);
-        // If parsing fails, treat as a single attachment
-        attachments = [{ name: msg.attachments, type: 'unknown' }];
+        // If parsing fails, try to extract file information manually
+        const fileMatch = msg.attachments.match(/name:\s*['"]([^'"]+)['"]/);
+        if (fileMatch) {
+          attachments = [{ 
+            name: fileMatch[1], 
+            type: 'document', 
+            url: '', 
+            size: 0 
+          }];
+        } else {
+          // If all else fails, treat as a single attachment
+          attachments = [{ name: msg.attachments, type: 'unknown' }];
+        }
       }
     } else if (Array.isArray(msg.attachments)) {
       attachments = msg.attachments;
-      console.log('✅ Using array attachments:', attachments);
     } else if (typeof msg.attachments === 'object') {
       // If it's a single object, wrap it in an array
       attachments = [msg.attachments];
-      console.log('✅ Wrapped object attachment in array:', attachments);
-    } else {
-      console.warn('⚠️ Unknown attachments type:', typeof msg.attachments);
-      attachments = [];
     }
-  } else {
-    console.log('📎 No attachments provided');
   }
 
   // Ensure each attachment has the required fields
@@ -67,16 +76,13 @@ const processMessageData = (msg) => {
     };
   });
 
-  const processedMessage = {
+  return {
     content: msg.content.trim(),
     role: msg.role,
     timestamp: msg.timestamp || new Date(),
     attachments: attachments,
     metadata: msg.metadata || {}
   };
-
-  console.log('✅ Processed message:', JSON.stringify(processedMessage, null, 2));
-  return processedMessage;
 };
 
 const createChat = async (req, res) => {
@@ -158,9 +164,7 @@ const sendMessage = async (req, res) => {
       }
     });
     
-    console.log('📤 About to push message to chat:', JSON.stringify(userMessage, null, 2));
     chat.messages.push(userMessage);
-    console.log('✅ Message pushed to chat successfully');
     
     let aiResponse;
     
@@ -225,17 +229,12 @@ const sendMessage = async (req, res) => {
     
     chat.messages.push(aiResponse);
     
-    console.log('💾 About to save chat with', chat.messages.length, 'messages');
-    console.log('📋 Last message attachments:', JSON.stringify(chat.messages[chat.messages.length - 1].attachments, null, 2));
-    
     try {
       await chat.save();
-      console.log('✅ Chat saved successfully');
     } catch (saveError) {
-      console.error('❌ Chat save failed:', saveError);
-      console.error('❌ Save error details:', saveError.message);
+      console.error('Chat save failed:', saveError);
       if (saveError.errors) {
-        console.error('❌ Validation errors:', saveError.errors);
+        console.error('Validation errors:', saveError.errors);
       }
       throw saveError;
     }
