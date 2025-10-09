@@ -34,7 +34,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatgpt-c
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chats', require('./routes/chats'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/rag', require('./routes/rag'));

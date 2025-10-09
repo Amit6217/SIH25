@@ -12,7 +12,6 @@ const {
   getRAGHealth 
 } = require('../controllers/ragController');
 const ragServiceManager = require('../services/ragServiceManager');
-const auth = require('../middleware/auth');
 
 // Configure multer for PDF uploads to RAG service
 const storage = multer.diskStorage({
@@ -46,8 +45,7 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
-// All RAG routes require authentication
-router.use(auth);
+// RAG routes (no authentication required)
 
 // Health check for RAG service
 router.get('/health', getRAGHealth);

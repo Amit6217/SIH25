@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const Chat = require('../models/Chat');
-const auth = require('../middleware/auth');
 
 // Debug endpoint to test message processing and schema validation
-router.post('/test-message-processing', auth, async (req, res) => {
+router.post('/test-message-processing', async (req, res) => {
   try {
     const { content, attachments } = req.body;
     
@@ -38,7 +37,7 @@ router.post('/test-message-processing', auth, async (req, res) => {
     try {
       const testChat = new Chat({
         title: 'Debug Test Chat',
-        userId: req.user._id,
+        userId: 'debug-user',
         messages: [processedMessage]
       });
       
@@ -94,7 +93,7 @@ router.post('/test-message-processing', auth, async (req, res) => {
 });
 
 // Test endpoint to check the actual schema
-router.get('/test-schema', auth, (req, res) => {
+router.get('/test-schema', (req, res) => {
   try {
     const schema = Chat.schema;
     const messagesSchema = schema.paths.messages;
