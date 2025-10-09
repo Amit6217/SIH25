@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const ragServiceManager = require('./services/ragServiceManager');
 
 // Load environment variables
 dotenv.config();
@@ -36,6 +37,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatgpt-c
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chats', require('./routes/chats'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/rag', require('./routes/rag'));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -67,6 +69,39 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Start RAG service if enabled
+  if (process.env.START_RAG_SERVICE === 'true') {
+    console.log('Starting RAG service...');
+    try {
+      await ragServiceManager.startRAGService();
+      console.log('RAG service integration ready');
+    } catch (error) {
+      console.error('Failed to start RAG service:', error);
+      console.log('Server will continue without RAG service');
+    }
+  } else {
+    console.log('RAG service auto-start disabled. Use START_RAG_SERVICE=true to enable.');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  await ragServiceManager.stopRAGService();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  await ragServiceManager.stopRAGService();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
