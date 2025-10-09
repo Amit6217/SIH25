@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env
+.env.*
+*.sqlite3
+*.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Build output
+dist/
+build/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+
+# Uploads and generated files
+uploads/
+frontend/public/uploads/
+frontend/public/static/
+
+# Misc
+*.bak
+*.tmp
+
+# Ignore Procfile/runtime.txt if not needed
+Procfile
+runtime.txt
