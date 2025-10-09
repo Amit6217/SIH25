@@ -1,6 +1,40 @@
 const Chat = require('../models/Chat');
 const { queryPDF } = require('./ragController');
 
+/**
+ * Helper function to validate and process message data
+ */
+const processMessageData = (msg) => {
+  // Ensure content is not empty
+  if (!msg.content || msg.content.trim() === '') {
+    throw new Error('Message content is required and cannot be empty');
+  }
+
+  // Handle attachments properly
+  let attachments = [];
+  if (msg.attachments) {
+    // If attachments is a string, try to parse it
+    if (typeof msg.attachments === 'string') {
+      try {
+        attachments = JSON.parse(msg.attachments);
+      } catch (parseError) {
+        console.warn('Failed to parse attachments string:', msg.attachments);
+        attachments = [];
+      }
+    } else if (Array.isArray(msg.attachments)) {
+      attachments = msg.attachments;
+    }
+  }
+
+  return {
+    content: msg.content.trim(),
+    role: msg.role,
+    timestamp: msg.timestamp || new Date(),
+    attachments: attachments,
+    metadata: msg.metadata || {}
+  };
+};
+
 const createChat = async (req, res) => {
   try {
     const { title = 'New Chat', messages = [] } = req.body;
@@ -8,19 +42,14 @@ const createChat = async (req, res) => {
     const chat = new Chat({
       title,
       userId: req.user._id,
-      messages: messages.map(msg => ({
-        content: msg.content,
-        role: msg.role,
-        timestamp: msg.timestamp || new Date(),
-        attachments: msg.attachments || []
-      }))
+      messages: messages.map(msg => processMessageData(msg))
     });
 
     await chat.save();
     res.status(201).json(chat);
   } catch (error) {
     console.error('Create chat error:', error);
-    res.status(500).json({ message: 'Server error creating chat' });
+    res.status(500).json({ message: 'Server error creating chat', error: error.message });
   }
 };
 
@@ -73,8 +102,8 @@ const sendMessage = async (req, res) => {
       return res.status(404).json({ message: 'Chat not found' });
     }
     
-    // Add user message
-    const userMessage = {
+    // Process message data using helper function
+    const userMessage = processMessageData({
       content,
       role: 'user',
       timestamp: new Date(),
@@ -83,7 +112,7 @@ const sendMessage = async (req, res) => {
         pdfId: pdfId || null,
         useRAG: useRAG || false
       }
-    };
+    });
     
     chat.messages.push(userMessage);
     
@@ -158,7 +187,11 @@ const sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({ message: 'Server error sending message' });
+    if (error.message.includes('Message content is required')) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: 'Server error sending message', error: error.message });
+    }
   }
 };
 
@@ -211,5 +244,6 @@ module.exports = {
   getChat,
   sendMessage,
   updateChat,
-  deleteChat
+  deleteChat,
+  processMessageData
 };

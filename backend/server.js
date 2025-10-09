@@ -38,6 +38,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/chats', require('./routes/chats'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/rag', require('./routes/rag'));
+app.use('/api/debug', require('./routes/debug'));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
