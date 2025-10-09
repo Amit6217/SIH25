@@ -33,9 +33,9 @@ class MemoryManager:
                 "history": [],
                 "messages": []
             }
-            print(f"🧠 Memory cleared for session: {session_id}")
+            print(f"Memory cleared for session: {session_id}")
         else:
-            print(f"⚠️ No memory found for session: {session_id}")
+            print(f"No memory found for session: {session_id}")
 
 memory_manager = MemoryManager()
 
@@ -45,10 +45,10 @@ def cache_query(func):
     def wrapper(user_query: str, pdf_path: str, session_id="default"):
         cache_key = (user_query, pdf_path, session_id)
         if cache_key in query_cache:
-            print(f"✅ Returning cached answer for: {cache_key}")
+            print(f"Returning cached answer for: {cache_key}")
             return query_cache[cache_key]
 
-        print(f"⚡ Executing pipeline for: {cache_key}")
+        print(f"Executing pipeline for: {cache_key}")
         result = func(user_query, pdf_path, session_id=session_id)
         query_cache[cache_key] = result
         return result
@@ -58,24 +58,24 @@ def cache_query(func):
 def load_pdf_chunks(pdf_path):
     from pypdf import PdfReader
     if not os.path.exists(pdf_path):
-        print(f"❌ File not found: {pdf_path}")
+        print(f"File not found: {pdf_path}")
         return []
 
     try:
         reader = PdfReader(pdf_path)
         texts = [page.extract_text() or "" for page in reader.pages]
     except Exception as e:
-        print(f"❌ Error reading PDF: {e}")
+        print(f"Error reading PDF: {e}")
         return []
     return texts
 
 # === Get/Create Indexes (SIMPLIFIED) ===
 def get_or_create_indexes(pdf_path):
     if pdf_path in pdf_cache:
-        print(f"✅ Using cached indexes for {pdf_path}")
+        print(f"Using cached indexes for {pdf_path}")
         return pdf_cache[pdf_path]
 
-    print(f"⚡ Creating simple text index for {pdf_path}")
+    print(f"Creating simple text index for {pdf_path}")
     chunks = load_pdf_chunks(pdf_path)
     texts = [doc for doc in chunks if isinstance(doc, str)]
 
@@ -113,7 +113,7 @@ def extract_relevant_clause(pdf_path, user_query, k=6):
     try:
         relevant_passages = simple_text_search(user_query, texts, k=k)
     except Exception as e:
-        print("❌ Text search failed:", e)
+        print("Text search failed:", e)
         relevant_passages = []
 
     if not relevant_passages:
@@ -205,9 +205,9 @@ Source Metadata:
             }
             
         except ImportError:
-            print("⚠️ langchain_groq not available, using mock response")
+            print("langchain_groq not available, using mock response")
         except Exception as e:
-            print(f"⚠️ Groq API error: {e}, using mock response")
+            print(f"Groq API error: {e}, using mock response")
 
     # Fallback: Mock response when Groq is not available
     mock_answer = f"""
