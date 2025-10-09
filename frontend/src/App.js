@@ -50,20 +50,27 @@ function AppContent() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+      
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <main className="flex-1 flex flex-col lg:ml-0">
+      <main className="flex-1 flex flex-col lg:ml-0 relative z-10">
         {/* Mobile Header with Hamburger Menu */}
-        <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+        <div className="lg:hidden flex items-center justify-between p-3 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-lg">
           <button
             onClick={toggleSidebar}
-            className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-xl transition-all duration-300 touch-manipulation hover:scale-105 active:scale-95"
             aria-label="Open sidebar"
           >
             <Menu className="h-6 w-6" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">ChatGPT Clone</h1>
-          <div className="w-12"></div> {/* Spacer for centering */}
+          <h1 className="text-lg font-semibold text-gray-800 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">ChatGPT Clone</h1>
+          <div className="w-10"></div> {/* Spacer for centering */}
         </div>
         
         <Routes>

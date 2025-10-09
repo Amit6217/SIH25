@@ -252,27 +252,26 @@ const ChatInterface = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white/60 backdrop-blur-xl relative">
       {/* Header - Hidden on mobile, shown on desktop */}
-      <div className="hidden lg:block border-b border-gray-200 p-4">
-        <h1 className="text-lg font-semibold text-gray-900">{chatTitle}</h1>
+      <div className="hidden lg:block border-b border-white/20 p-4 bg-white/40 backdrop-blur-md">
+        <h1 className="text-lg font-semibold text-gray-800 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{chatTitle}</h1>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            <div className="text-6xl mb-4">🤖</div>
-            <h2 className="text-xl font-medium mb-2">Welcome to ChatGPT Clone</h2>
+          <div className="text-center text-gray-500 py-8 lg:py-12">
+            <h2 className="text-xl font-medium mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Welcome to ChatGPT Clone</h2>
             <p className="text-gray-400">Start a conversation by typing a message below</p>
           </div>
         ) : (
           messages.map((message, index) => (
             <div
               key={message._id || index}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
-              <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-800'} rounded-lg px-4 py-2`}>
+              <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-white/80 backdrop-blur-sm text-gray-800 border border-white/20 shadow-lg'} rounded-2xl px-4 py-3 hover:scale-[1.02] transition-all duration-300`}>
                 <p className="text-sm">{message.content}</p>
                 
                 {message.attachments && message.attachments.length > 0 && (
@@ -296,10 +295,10 @@ const ChatInterface = () => {
         )}
         
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2">
+          <div className="flex justify-start animate-fade-in">
+            <div className="bg-white/80 backdrop-blur-sm text-gray-800 rounded-2xl px-4 py-3 border border-white/20 shadow-lg">
               <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
                 <span className="text-sm">AI is typing...</span>
               </div>
             </div>
@@ -311,19 +310,19 @@ const ChatInterface = () => {
 
       {/* Attachments Preview */}
       {attachments.length > 0 && (
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-white/20 p-2 lg:p-4 bg-white/40 backdrop-blur-md">
           <div className="flex flex-wrap gap-2">
             {attachments.map((attachment) => (
               <div
                 key={attachment.id}
-                className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 text-sm"
+                className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-xl px-3 py-2 text-sm border border-white/20 shadow-lg hover:scale-105 transition-all duration-300"
               >
                 {getFileIcon(attachment.type)}
                 <span className="truncate max-w-32">{attachment.name}</span>
                 <span className="text-gray-500">({formatFileSize(attachment.size)})</span>
                 <button
                   onClick={() => removeAttachment(attachment.id)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-red-500 hover:bg-red-100 rounded-lg p-1 transition-all duration-300 hover:scale-110"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -334,14 +333,14 @@ const ChatInterface = () => {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="flex items-end gap-2">
+      <div className="border-t border-white/20 p-2 lg:p-4 bg-white/60 backdrop-blur-xl">
+        <div className="flex items-center gap-2">
           {/* File Upload */}
           <div {...getRootProps()} className="cursor-pointer">
             <input {...getInputProps()} />
             <button
               type="button"
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-indigo-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-indigo-200 hover:shadow-lg"
             >
               <Paperclip className="h-5 w-5" />
             </button>
@@ -352,12 +351,12 @@ const ChatInterface = () => {
             type="button"
             onClick={isListening ? stopVoiceInput : startVoiceInput}
             disabled={!speechSupported}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border ${
               !speechSupported
-                ? 'text-gray-300 cursor-not-allowed'
+                ? 'text-gray-300 cursor-not-allowed border-gray-200'
                 : isListening
-                ? 'text-red-600 bg-red-100 hover:bg-red-200'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                ? 'text-red-600 bg-red-100/80 border-red-200 hover:bg-red-200/80 hover:shadow-lg'
+                : 'text-gray-600 hover:text-purple-600 hover:bg-white/60 border-white/20 hover:border-purple-200 hover:shadow-lg'
             }`}
             title={
               !speechSupported 
@@ -377,16 +376,16 @@ const ChatInterface = () => {
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={isListening ? "Listening... Speak now" : "Type your message..."}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${
+              className={`w-full px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none backdrop-blur-sm transition-all duration-300 ${
                 isListening 
-                  ? 'border-red-300 bg-red-50' 
-                  : 'border-gray-300'
+                  ? 'border-red-300 bg-red-50/80 shadow-lg' 
+                  : 'border-white/20 bg-white/80 hover:bg-white/90 hover:shadow-lg'
               }`}
               rows="1"
               style={{ minHeight: '40px', maxHeight: '120px' }}
             />
             {isListening && (
-              <div className="absolute top-2 right-2 flex items-center gap-1">
+              <div className="absolute top-3 right-3 flex items-center gap-1">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                 <span className="text-xs text-red-600 font-medium">Listening</span>
               </div>
@@ -397,7 +396,7 @@ const ChatInterface = () => {
           <button
             onClick={handleSendMessage}
             disabled={(!inputMessage.trim() && attachments.length === 0) || isLoading}
-            className="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl"
           >
             <Send className="h-5 w-5" />
           </button>
