@@ -1,18 +1,44 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Volume2 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import api from '../utils/api';
 
 const ChatInterface = () => {
   const { chatId } = useParams();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [chatTitle, setChatTitle] = useState('New Chat');
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  // Load chat data when chatId changes
+  useEffect(() => {
+    if (chatId) {
+      loadChat();
+    } else {
+      // Reset for new chat
+      setMessages([]);
+      setChatTitle('New Chat');
+    }
+  }, [chatId]);
+
+  const loadChat = async () => {
+    try {
+      const response = await api.get(`/chats/${chatId}`);
+      const chat = response.data;
+      setMessages(chat.messages || []);
+      setChatTitle(chat.title || 'New Chat');
+    } catch (error) {
+      console.error('Error loading chat:', error);
+      navigate('/');
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -92,33 +118,55 @@ const ChatInterface = () => {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && attachments.length === 0) return;
 
-    const newMessage = {
-      id: Date.now(),
-      content: inputMessage,
-      role: 'user',
-      timestamp: new Date().toISOString(),
-      attachments: [...attachments]
-    };
-
-    setMessages(prev => [...prev, newMessage]);
+    const messageContent = inputMessage;
+    const messageAttachments = [...attachments];
+    
+    // Clear input immediately for better UX
     setInputMessage('');
     setAttachments([]);
     setIsLoading(true);
 
     try {
-      // Simulate AI response
-      setTimeout(() => {
-        const aiResponse = {
-          id: Date.now() + 1,
-          content: "I received your message. This is a simulated response from the AI assistant.",
-          role: 'assistant',
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, aiResponse]);
-        setIsLoading(false);
-      }, 1000);
+      if (chatId) {
+        // Send message to existing chat
+        const response = await api.post(`/chats/${chatId}/messages`, {
+          content: messageContent,
+          attachments: messageAttachments.map(att => ({
+            name: att.name,
+            type: att.type,
+            size: att.size
+          }))
+        });
+        
+        // Update messages with the response from server
+        setMessages(response.data.chat.messages);
+      } else {
+        // Create new chat with first message
+        const response = await api.post('/chats', {
+          title: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
+          messages: [{
+            content: messageContent,
+            role: 'user',
+            timestamp: new Date(),
+            attachments: messageAttachments.map(att => ({
+              name: att.name,
+              type: att.type,
+              size: att.size
+            }))
+          }]
+        });
+        
+        const newChat = response.data;
+        navigate(`/chat/${newChat._id}`);
+        setMessages(newChat.messages);
+        setChatTitle(newChat.title);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+      // Restore the input on error
+      setInputMessage(messageContent);
+      setAttachments(messageAttachments);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -153,7 +201,7 @@ const ChatInterface = () => {
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
-        <h1 className="text-lg font-semibold text-gray-900">ChatGPT Clone</h1>
+        <h1 className="text-lg font-semibold text-gray-900">{chatTitle}</h1>
       </div>
 
       {/* Messages */}
@@ -165,9 +213,9 @@ const ChatInterface = () => {
             <p className="text-gray-400">Start a conversation by typing a message below</p>
           </div>
         ) : (
-          messages.map((message) => (
+          messages.map((message, index) => (
             <div
-              key={message.id}
+              key={message._id || index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-800'} rounded-lg px-4 py-2`}>
@@ -175,8 +223,8 @@ const ChatInterface = () => {
                 
                 {message.attachments && message.attachments.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    {message.attachments.map((attachment) => (
-                      <div key={attachment.id} className="flex items-center gap-2 text-xs opacity-80">
+                    {message.attachments.map((attachment, attIndex) => (
+                      <div key={attachment._id || attIndex} className="flex items-center gap-2 text-xs opacity-80">
                         {getFileIcon(attachment.type)}
                         <span className="truncate">{attachment.name}</span>
                         <span>({formatFileSize(attachment.size)})</span>
