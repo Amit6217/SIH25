@@ -39,6 +39,47 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/rag', require('./routes/rag'));
 app.use('/api/debug', require('./routes/debug'));
 
+// Root route - show all available endpoints
+app.get('/', (req, res) => {
+  res.json({
+    message: 'ChatGPT Clone Backend API',
+    version: '1.0.0',
+    endpoints: {
+      auth: {
+        'POST /api/auth/register': 'Register a new user',
+        'POST /api/auth/login': 'Login user',
+        'GET /api/auth/me': 'Get current user (requires auth)',
+        'POST /api/auth/logout': 'Logout user (requires auth)'
+      },
+      chats: {
+        'POST /api/chats': 'Create a new chat (requires auth)',
+        'GET /api/chats': 'Get user chats (requires auth)',
+        'GET /api/chats/:chatId': 'Get specific chat (requires auth)',
+        'PUT /api/chats/:chatId': 'Update chat title (requires auth)',
+        'POST /api/chats/:chatId/messages': 'Send message to chat (requires auth)',
+        'DELETE /api/chats/:chatId': 'Delete chat (requires auth)'
+      },
+      upload: {
+        'POST /api/upload/single': 'Upload single file (requires auth)',
+        'POST /api/upload/multiple': 'Upload multiple files (requires auth)'
+      },
+      rag: {
+        'GET /api/rag/health': 'Check RAG service health',
+        'POST /api/rag/upload': 'Upload PDF to RAG service',
+        'POST /api/rag/query': 'Query PDF using RAG service',
+        'POST /api/rag/memory/reset': 'Reset conversation memory',
+        'GET /api/rag/pdfs': 'Get list of uploaded PDFs',
+        'DELETE /api/rag/pdf/:pdfId': 'Delete PDF from RAG service'
+      },
+      debug: {
+        'POST /api/debug/test-message-processing': 'Test message processing',
+        'GET /api/debug/test-schema': 'Test schema validation'
+      }
+    },
+    note: 'All chat and upload routes require authentication. Include Authorization header with Bearer token.'
+  });
+});
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
