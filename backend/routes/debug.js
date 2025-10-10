@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Chat = require('../models/Chat');
 
 // Debug endpoint to test message processing and schema validation
@@ -37,7 +38,7 @@ router.post('/test-message-processing', async (req, res) => {
     try {
       const testChat = new Chat({
         title: 'Debug Test Chat',
-        userId: 'debug-user',
+        userId: new mongoose.Types.ObjectId(), // Use proper ObjectId
         messages: [processedMessage]
       });
       
@@ -109,7 +110,12 @@ router.get('/test-schema', (req, res) => {
       schema: {
         messagesType: messagesSchema.instance,
         attachmentsType: attachmentsSchema.instance,
-        attachmentsSchema: attachmentsSchema.schema
+        attachmentsSchema: {
+          name: attachmentsSchema.schema.paths.name.instance,
+          type: attachmentsSchema.schema.paths.type.instance,
+          url: attachmentsSchema.schema.paths.url.instance,
+          size: attachmentsSchema.schema.paths.size.instance
+        }
       }
     });
   } catch (error) {
