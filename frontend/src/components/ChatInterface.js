@@ -298,18 +298,18 @@ const ChatInterface = () => {
 
 
   return (
-    <div className="flex flex-col h-full bg-white/60 backdrop-blur-xl relative">
+    <div className="flex flex-col h-full bg-gray-800 relative">
       {/* Header - Hidden on mobile, shown on desktop */}
-      <div className="hidden lg:block border-b border-white/20 p-4 bg-white/40 backdrop-blur-md">
-        <h1 className="text-lg font-semibold text-gray-800 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{chatTitle}</h1>
+      <div className="hidden lg:block border-b border-gray-700 p-4 bg-gray-800">
+        <h1 className="text-lg font-semibold text-white">{chatTitle}</h1>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8 lg:py-12">
-            <h2 className="text-xl font-medium mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Welcome to LegalEase</h2>
-            <p className="text-gray-400">Start a conversation by typing a message below</p>
+          <div className="text-center text-gray-400 py-8 lg:py-12">
+            <h2 className="text-xl font-medium mb-2 text-white">Welcome to LegalEase</h2>
+            <p className="text-gray-500">Start a conversation by typing a message below</p>
           </div>
         ) : (
           messages.map((message, index) => (
@@ -317,13 +317,13 @@ const ChatInterface = () => {
               key={message._id || index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
-              <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-white/80 backdrop-blur-sm text-gray-800 border border-white/20 shadow-lg'} rounded-2xl px-4 py-3 hover:scale-[1.02] transition-all duration-300`}>
+              <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-100 border border-gray-700'} rounded-lg px-4 py-3 transition-all duration-300`}>
                 <p className="text-sm">{message.content}</p>
                 
                 {/* RAG Source Indicator */}
                 {message.metadata && message.metadata.source === 'RAG' && (
-                  <div className="mt-2 px-2 py-1 bg-blue-100/80 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-2 text-xs text-blue-700">
+                  <div className="mt-2 px-2 py-1 bg-gray-700 rounded-lg border border-gray-600">
+                    <div className="flex items-center gap-2 text-xs text-gray-300">
                       <FileText className="h-3 w-3" />
                       <span>Answer from: {message.metadata.pdfName}</span>
                     </div>
@@ -352,9 +352,9 @@ const ChatInterface = () => {
         
         {isLoading && (
           <div className="flex justify-start animate-fade-in">
-            <div className="bg-white/80 backdrop-blur-sm text-gray-800 rounded-2xl px-4 py-3 border border-white/20 shadow-lg">
+            <div className="bg-gray-800 text-gray-100 rounded-lg px-4 py-3 border border-gray-700">
               <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
                 <span className="text-sm">AI is typing...</span>
               </div>
             </div>
@@ -367,8 +367,8 @@ const ChatInterface = () => {
 
       {/* PDF Status Indicator */}
       {latestPDF && (
-        <div className="border-t border-white/20 p-2 lg:p-4 bg-green-50/80 backdrop-blur-md">
-          <div className="flex items-center gap-2 text-sm text-green-700">
+        <div className="border-t border-gray-700 p-2 lg:p-4 bg-gray-800">
+          <div className="flex items-center gap-2 text-sm text-green-400">
             <FileText className="h-4 w-4" />
             <span>Ready to answer questions about: <strong>{latestPDF.originalName}</strong></span>
           </div>
@@ -376,14 +376,14 @@ const ChatInterface = () => {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-white/20 p-2 lg:p-4 bg-white/60 backdrop-blur-xl">
+      <div className="border-t border-gray-700 p-2 lg:p-4 bg-gray-800">
         <div className="flex items-center gap-1 lg:gap-2"> {/* Reduced gap on mobile */}
 
            {/* PDF Upload for RAG */}
            <button
              type="button"
              onClick={() => setShowPDFUpload(true)}
-             className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-green-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-green-200 hover:shadow-lg"
+             className="flex items-center justify-center w-10 h-10 text-gray-400 hover:text-green-400 hover:bg-gray-700 rounded-lg transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 border border-gray-600 hover:border-green-500"
              title="Upload PDF for RAG"
            >
              <Upload className="h-5 w-5" />
@@ -394,12 +394,12 @@ const ChatInterface = () => {
             type="button"
             onClick={isListening ? stopVoiceInput : startVoiceInput}
             disabled={!speechSupported}
-            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border ${
+            className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 border ${
               !speechSupported
-                ? 'text-gray-300 cursor-not-allowed border-gray-200'
+                ? 'text-gray-500 cursor-not-allowed border-gray-600'
                 : isListening
-                ? 'text-red-600 bg-red-100/80 border-red-200 hover:bg-red-200/80 hover:shadow-lg'
-                : 'text-gray-600 hover:text-purple-600 hover:bg-white/60 border-white/20 hover:border-purple-200 hover:shadow-lg'
+                ? 'text-red-400 bg-red-900/50 border-red-600 hover:bg-red-800/50'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
             }`}
             title={
               !speechSupported 
@@ -419,18 +419,18 @@ const ChatInterface = () => {
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={latestPDF ? `Ask a question about ${latestPDF.originalName}...` : "Type here..."}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none backdrop-blur-sm transition-all duration-300 ${
+              className={`w-full px-4 py-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none transition-all duration-300 ${
                 isListening 
-                  ? 'border-red-300 bg-red-50/80 shadow-lg' 
-                  : 'bg-white/80 hover:bg-white/90 hover:shadow-lg hover:border-gray-400'
+                  ? 'border-red-500 bg-red-900/20' 
+                  : 'bg-gray-700 hover:bg-gray-600 hover:border-gray-500 text-white placeholder-gray-400'
               }`}
               rows="1"
               style={{ minHeight: '40px', maxHeight: '120px' }}
             />
             {isListening && (
               <div className="absolute top-3 right-3 flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-red-600 font-medium">Listening</span>
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-red-400 font-medium">Listening</span>
               </div>
             )}
           </div>
@@ -439,7 +439,7 @@ const ChatInterface = () => {
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || isLoading}
-            className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl"
+            className="flex items-center justify-center w-10 h-10 bg-gray-600 text-white rounded-lg hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95"
           >
             <Send className="h-5 w-5" />
           </button>
