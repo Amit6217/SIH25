@@ -94,6 +94,13 @@ const queryPDF = async (req, res) => {
     formData.append('question', question);
     formData.append('session_id', sessionId);
 
+    console.log('Sending to RAG service:', {
+      pdfId,
+      question,
+      sessionId,
+      url: `${RAG_SERVICE_URL}/pdf/query`
+    });
+
     // Query RAG service
     const response = await axios.post(`${RAG_SERVICE_URL}/pdf/query`, formData, {
       headers: {

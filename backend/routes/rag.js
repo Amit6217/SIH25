@@ -46,6 +46,23 @@ const upload = multer({
 
 // RAG routes (no authentication required)
 
+// Debug endpoint to test request body parsing
+router.post('/debug-query', (req, res) => {
+  console.log('Debug query endpoint called');
+  console.log('Request body:', req.body);
+  console.log('Request headers:', req.headers);
+  console.log('Content-Type:', req.headers['content-type']);
+  
+  res.json({
+    message: 'Debug endpoint response',
+    receivedBody: req.body,
+    headers: req.headers,
+    hasBody: !!req.body,
+    bodyType: typeof req.body,
+    bodyKeys: req.body ? Object.keys(req.body) : 'no body'
+  });
+});
+
 // Health check for RAG service
 router.get('/health', getRAGHealth);
 
