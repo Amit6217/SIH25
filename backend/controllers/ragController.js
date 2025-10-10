@@ -92,6 +92,90 @@ const uploadPDFToRAG = async (req, res) => {
 };
 
 /**
+ * Query latest PDF using RAG service (for authenticated users)
+ */
+const queryLatestPDF = async (req, res) => {
+  try {
+    const { question, sessionId = 'default' } = req.body;
+    const userId = req.user ? req.user._id : null;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Authentication required to query latest PDF'
+      });
+    }
+
+    if (!question || typeof question !== 'string' || question.trim() === '') {
+      return res.status(400).json({
+        message: 'Question is required and must be a non-empty string'
+      });
+    }
+
+    // Get the latest PDF for the user
+    const latestPDF = await PDF.findOne({ 
+      userId: userId, 
+      isActive: true 
+    })
+    .sort({ indexedAt: -1 })
+    .select('pdfId filename originalName');
+
+    if (!latestPDF) {
+      return res.status(404).json({
+        message: 'No PDF found. Please upload a PDF first.'
+      });
+    }
+
+    // Create form data for RAG service
+    const formData = new FormData();
+    formData.append('pdf_id', latestPDF.pdfId);
+    formData.append('question', question);
+    formData.append('session_id', sessionId);
+
+    console.log('Sending to RAG service (latest PDF):', {
+      pdfId: latestPDF.pdfId,
+      question,
+      sessionId,
+      url: `${RAG_SERVICE_URL}/pdf/query`
+    });
+
+    // Query RAG service
+    const response = await axios.post(`${RAG_SERVICE_URL}/pdf/query`, formData, {
+      headers: {
+        ...formData.getHeaders(),
+      },
+      timeout: RAG_SERVICE_TIMEOUT
+    });
+
+    res.json({
+      message: 'Query processed successfully',
+      answer: response.data.answer,
+      metadata: response.data.metadata,
+      sessionId: response.data.session_id,
+      pdfInfo: {
+        pdfId: latestPDF.pdfId,
+        filename: latestPDF.filename,
+        originalName: latestPDF.originalName
+      }
+    });
+
+  } catch (error) {
+    console.error('RAG latest PDF query error:', error);
+
+    if (error.response) {
+      return res.status(error.response.status).json({
+        message: 'RAG service error',
+        error: error.response.data
+      });
+    }
+
+    res.status(500).json({
+      message: 'Failed to query latest PDF',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Query PDF using RAG service
  */
 const queryPDF = async (req, res) => {
@@ -323,6 +407,7 @@ const getRAGHealth = async (req, res) => {
 module.exports = {
   uploadPDFToRAG,
   queryPDF,
+  queryLatestPDF,
   resetMemory,
   getUserPDFs,
   getPDFList,

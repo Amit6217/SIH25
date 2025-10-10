@@ -55,6 +55,14 @@ export const ragAPI = {
     });
   },
 
+  // Query latest PDF using RAG service
+  queryLatestPDF: (question, sessionId = 'default') => {
+    return api.post('/rag/query-latest', {
+      question,
+      sessionId
+    });
+  },
+
   // Get user's uploaded PDFs
   getUserPDFs: () => {
     return api.get('/rag/user-pdfs');

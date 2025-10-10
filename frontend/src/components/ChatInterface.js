@@ -1,11 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Volume2, Upload, Search } from 'lucide-react';
-import { useDropzone } from 'react-dropzone';
+import { Send, Mic, MicOff, X, FileText, Upload } from 'lucide-react';
 import api from '../utils/api';
 import PDFUpload from './PDFUpload';
-import PDFList from './PDFList';
-import RAGQuery from './RAGQuery';
 
 const ChatInterface = () => {
   const { chatId } = useParams();
@@ -13,15 +10,12 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [attachments, setAttachments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatTitle, setChatTitle] = useState('New Chat');
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [showPDFUpload, setShowPDFUpload] = useState(false);
-  const [showPDFList, setShowPDFList] = useState(false);
-  const [showRAGQuery, setShowRAGQuery] = useState(false);
-  const [selectedPDF, setSelectedPDF] = useState(null);
+  const [latestPDF, setLatestPDF] = useState(null);
   const messagesEndRef = useRef(null);
   const speechRecognitionRef = useRef(null);
 
@@ -120,31 +114,6 @@ const ChatInterface = () => {
     scrollToBottom();
   }, [messages]);
 
-  const onDrop = (acceptedFiles) => {
-    const newAttachments = acceptedFiles.map(file => ({
-      id: Date.now() + Math.random(),
-      file,
-      name: file.name,
-      type: file.type.startsWith('image/') ? 'image' : 'document',
-      size: file.size
-    }));
-    setAttachments(prev => [...prev, ...newAttachments]);
-  };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-      'application/pdf': ['.pdf'],
-      'text/*': ['.txt', '.md'],
-      'audio/*': ['.mp3', '.wav', '.m4a']
-    },
-    multiple: true
-  });
-
-  const removeAttachment = (id) => {
-    setAttachments(prev => prev.filter(att => att.id !== id));
-  };
 
   const startVoiceInput = () => {
     if (speechRecognitionRef.current && !isListening) {
@@ -165,68 +134,128 @@ const ChatInterface = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() && attachments.length === 0) return;
+    if (!inputMessage.trim()) return;
 
     const messageContent = inputMessage;
-    const messageAttachments = [...attachments];
     
     // Clear input immediately for better UX
     setInputMessage('');
-    setAttachments([]);
     setIsLoading(true);
 
     try {
-      if (chatId) {
-        // Send message to existing chat
-        const response = await api.post(`/chats/${chatId}/messages`, {
-          content: messageContent,
-          attachments: messageAttachments.map(att => ({
-            name: att.name,
-            type: att.type,
-            size: att.size
-          }))
+      // Check if this is a PDF question and we have a PDF uploaded
+      if (latestPDF && messageContent.trim()) {
+        // This is a PDF question - use RAG
+        const response = await api.post('/rag/query-latest', {
+          question: messageContent.trim(),
+          sessionId: `session_${Date.now()}`
         });
-        
-        // Update messages with the response from server
-        setMessages(response.data.chat.messages);
-        
-        // Update chat title if it's empty and this is the first user message
-        const updatedChat = response.data.chat;
-        if (!updatedChat.title && updatedChat.messages.length > 0) {
-          const firstUserMessage = updatedChat.messages.find(msg => msg.role === 'user');
-          if (firstUserMessage) {
-            const newTitle = firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
-            // Update chat title
-            await api.put(`/chats/${chatId}`, { title: newTitle });
-            setChatTitle(newTitle);
+
+        // Add user message
+        const userMessage = {
+          _id: `user_${Date.now()}`,
+          content: messageContent,
+          role: 'user',
+          timestamp: new Date(),
+          attachments: [{
+            _id: `att_${Date.now()}`,
+            name: response.data.pdfInfo.originalName,
+            type: 'document',
+            size: 0 // Size not available in response
+          }]
+        };
+
+        // Add AI response
+        const aiMessage = {
+          _id: `ai_${Date.now()}`,
+          content: response.data.answer,
+          role: 'assistant',
+          timestamp: new Date(),
+          metadata: {
+            source: 'RAG',
+            pdfId: response.data.pdfInfo.pdfId,
+            pdfName: response.data.pdfInfo.originalName,
+            sessionId: response.data.sessionId
+          }
+        };
+
+        // Add messages to the current chat
+        setMessages(prev => [...prev, userMessage, aiMessage]);
+
+        // Save to backend if in a chat
+        if (chatId) {
+          try {
+            await api.post(`/chats/${chatId}/messages`, {
+              content: userMessage.content,
+              attachments: userMessage.attachments
+            });
+            await api.post(`/chats/${chatId}/messages`, {
+              content: aiMessage.content,
+              role: 'assistant',
+              metadata: aiMessage.metadata
+            });
+          } catch (error) {
+            console.error('Error saving RAG messages to chat:', error);
+          }
+        } else {
+          // Create new chat for RAG conversation
+          try {
+            const chatResponse = await api.post('/chats', {
+              title: `PDF Query: ${response.data.pdfInfo.originalName}`,
+              messages: [userMessage, aiMessage]
+            });
+            
+            const newChat = chatResponse.data;
+            navigate(`/chat/${newChat._id}`);
+            setMessages(newChat.messages);
+            setChatTitle(newChat.title);
+          } catch (error) {
+            console.error('Error creating new chat for RAG result:', error);
           }
         }
       } else {
-        // Create new chat with first message
-        const response = await api.post('/chats', {
-          title: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
-          messages: [{
-            content: messageContent,
-            role: 'user',
-            timestamp: new Date(),
-            attachments: messageAttachments.map(att => ({
-              name: att.name,
-              type: att.type,
-              size: att.size
-            }))
-          }]
-        });
-        
-        const newChat = response.data;
-        navigate(`/chat/${newChat._id}`);
-        setMessages(newChat.messages);
-        setChatTitle(newChat.title);
+        // Regular chat message
+        if (chatId) {
+          // Send message to existing chat
+          const response = await api.post(`/chats/${chatId}/messages`, {
+            content: messageContent
+          });
+          
+          // Update messages with the response from server
+          setMessages(response.data.chat.messages);
+          
+          // Update chat title if it's empty and this is the first user message
+          const updatedChat = response.data.chat;
+          if (!updatedChat.title && updatedChat.messages.length > 0) {
+            const firstUserMessage = updatedChat.messages.find(msg => msg.role === 'user');
+            if (firstUserMessage) {
+              const newTitle = firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
+              // Update chat title
+              await api.put(`/chats/${chatId}`, { title: newTitle });
+              setChatTitle(newTitle);
+            }
+          }
+        } else {
+          // Create new chat with first message
+          const response = await api.post('/chats', {
+            title: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
+            messages: [{
+              content: messageContent,
+              role: 'user',
+              timestamp: new Date()
+            }]
+          });
+          
+          const newChat = response.data;
+          navigate(`/chat/${newChat._id}`);
+          setMessages(newChat.messages);
+          setChatTitle(newChat.title);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
       // Restore the input on error
       setInputMessage(messageContent);
-      setAttachments(messageAttachments);
     } finally {
       setIsLoading(false);
     }
@@ -247,101 +276,26 @@ const ChatInterface = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileIcon = (type) => {
-    switch (type) {
-      case 'image':
-        return <Image className="h-4 w-4" />;
-      case 'audio':
-        return <Volume2 className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
-    }
-  };
 
   // RAG-related handlers
   const handlePDFUploadSuccess = (pdfData) => {
     console.log('PDF uploaded successfully:', pdfData);
-    // You can add additional logic here, like showing a success message
-  };
-
-  const handlePDFSelect = (pdf) => {
-    setSelectedPDF(pdf);
-    setShowRAGQuery(true);
-    setShowPDFList(false);
-  };
-
-  const handleRAGQueryResult = async (result) => {
-    console.log('RAG query result:', result);
-    
-    // Add the question and answer as chat messages
-    const userMessage = {
-      _id: `user_${Date.now()}`,
-      content: result.question,
-      role: 'user',
-      timestamp: new Date(),
-      attachments: [{
-        _id: `att_${Date.now()}`,
-        name: result.pdf.originalName,
-        type: 'document',
-        size: result.pdf.fileSize
-      }]
-    };
-
-    const aiMessage = {
-      _id: `ai_${Date.now()}`,
-      content: result.answer,
+    setLatestPDF(pdfData);
+    // Show success message
+    const successMessage = {
+      _id: `success_${Date.now()}`,
+      content: `PDF "${pdfData.originalName}" uploaded successfully! You can now ask questions about it.`,
       role: 'assistant',
       timestamp: new Date(),
       metadata: {
-        source: 'RAG',
-        pdfId: result.pdf.pdfId,
-        pdfName: result.pdf.originalName,
-        sessionId: result.sessionId
+        type: 'upload_success',
+        pdfId: pdfData.pdfId,
+        pdfName: pdfData.originalName
       }
     };
-
-    // Add messages to the current chat
-    setMessages(prev => [...prev, userMessage, aiMessage]);
-
-    // If we're in a chat, save the messages to the backend
-    if (chatId) {
-      try {
-        // Add user message
-        await api.post(`/chats/${chatId}/messages`, {
-          content: userMessage.content,
-          attachments: userMessage.attachments
-        });
-
-        // Add AI response
-        await api.post(`/chats/${chatId}/messages`, {
-          content: aiMessage.content,
-          role: 'assistant',
-          metadata: aiMessage.metadata
-        });
-      } catch (error) {
-        console.error('Error saving RAG messages to chat:', error);
-      }
-    } else {
-      // If no chat exists, create a new one
-      try {
-        const response = await api.post('/chats', {
-          title: `RAG Query: ${result.pdf.originalName}`,
-          messages: [userMessage, aiMessage]
-        });
-        
-        const newChat = response.data;
-        navigate(`/chat/${newChat._id}`);
-        setMessages(newChat.messages);
-        setChatTitle(newChat.title);
-      } catch (error) {
-        console.error('Error creating new chat for RAG result:', error);
-      }
-    }
-
-    // Close the query modal
-    setShowRAGQuery(false);
-    setSelectedPDF(null);
+    setMessages(prev => [...prev, successMessage]);
   };
+
 
   return (
     <div className="flex flex-col h-full bg-white/60 backdrop-blur-xl relative">
@@ -380,7 +334,7 @@ const ChatInterface = () => {
                   <div className="mt-2 space-y-1">
                     {message.attachments.map((attachment, attIndex) => (
                       <div key={attachment._id || attIndex} className="flex items-center gap-2 text-xs opacity-80">
-                        {getFileIcon(attachment.type)}
+                        <FileText className="h-4 w-4" />
                         <span className="truncate">{attachment.name}</span>
                         <span>({formatFileSize(attachment.size)})</span>
                       </div>
@@ -410,26 +364,13 @@ const ChatInterface = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Attachments Preview */}
-      {attachments.length > 0 && (
-        <div className="border-t border-white/20 p-2 lg:p-4 bg-white/40 backdrop-blur-md">
-          <div className="flex flex-wrap gap-2">
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-xl px-3 py-2 text-sm border border-white/20 shadow-lg hover:scale-105 transition-all duration-300"
-              >
-                {getFileIcon(attachment.type)}
-                <span className="truncate max-w-32">{attachment.name}</span>
-                <span className="text-gray-500">({formatFileSize(attachment.size)})</span>
-                <button
-                  onClick={() => removeAttachment(attachment.id)}
-                  className="text-gray-500 hover:text-red-500 hover:bg-red-100 rounded-lg p-1 transition-all duration-300 hover:scale-110"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+
+      {/* PDF Status Indicator */}
+      {latestPDF && (
+        <div className="border-t border-white/20 p-2 lg:p-4 bg-green-50/80 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <FileText className="h-4 w-4" />
+            <span>Ready to answer questions about: <strong>{latestPDF.originalName}</strong></span>
           </div>
         </div>
       )}
@@ -437,36 +378,16 @@ const ChatInterface = () => {
       {/* Input Area */}
       <div className="border-t border-white/20 p-2 lg:p-4 bg-white/60 backdrop-blur-xl">
         <div className="flex items-center gap-1 lg:gap-2"> {/* Reduced gap on mobile */}
-          {/* File Upload */}
-          <div {...getRootProps()} className="cursor-pointer">
-            <input {...getInputProps()} />
-            <button
-              type="button"
-              className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-indigo-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-indigo-200 hover:shadow-lg"
-            >
-              <Paperclip className="h-5 w-5" />
-            </button>
-          </div>
 
-          {/* PDF Upload for RAG */}
-          <button
-            type="button"
-            onClick={() => setShowPDFUpload(true)}
-            className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-green-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-green-200 hover:shadow-lg"
-            title="Upload PDF for RAG"
-          >
-            <Upload className="h-5 w-5" />
-          </button>
-
-          {/* PDF List for RAG */}
-          <button
-            type="button"
-            onClick={() => setShowPDFList(true)}
-            className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-blue-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-blue-200 hover:shadow-lg"
-            title="View PDFs for RAG"
-          >
-            <Search className="h-5 w-5" />
-          </button>
+           {/* PDF Upload for RAG */}
+           <button
+             type="button"
+             onClick={() => setShowPDFUpload(true)}
+             className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-green-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-green-200 hover:shadow-lg"
+             title="Upload PDF for RAG"
+           >
+             <Upload className="h-5 w-5" />
+           </button>
 
           {/* Voice Input */}
           <button
@@ -497,12 +418,12 @@ const ChatInterface = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type here ..." // <-- Changed placeholder
-              className={`w-full px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none backdrop-blur-sm transition-all duration-300 ${
+              placeholder={latestPDF ? `Ask a question about ${latestPDF.originalName}...` : "Type here..."}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none backdrop-blur-sm transition-all duration-300 ${
                 isListening 
                   ? 'border-red-300 bg-red-50/80 shadow-lg' 
-                  : 'border-white/20 bg-white/80 hover:bg-white/90 hover:shadow-lg'
-              } border-gray-800`} // <-- Added dark border
+                  : 'bg-white/80 hover:bg-white/90 hover:shadow-lg hover:border-gray-400'
+              }`}
               rows="1"
               style={{ minHeight: '40px', maxHeight: '120px' }}
             />
@@ -517,43 +438,20 @@ const ChatInterface = () => {
           {/* Send Button */}
           <button
             onClick={handleSendMessage}
-            disabled={(!inputMessage.trim() && attachments.length === 0) || isLoading}
+            disabled={!inputMessage.trim() || isLoading}
             className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl"
           >
             <Send className="h-5 w-5" />
           </button>
         </div>
 
-        {isDragActive && (
-          <div className="absolute inset-0 bg-primary-50 bg-opacity-50 flex items-center justify-center border-2 border-dashed border-primary-300 rounded-lg">
-            <p className="text-primary-600 font-medium">Drop files here to upload</p>
-          </div>
-        )}
       </div>
 
-      {/* RAG Modals */}
+      {/* PDF Upload Modal */}
       {showPDFUpload && (
         <PDFUpload
           onUploadSuccess={handlePDFUploadSuccess}
           onClose={() => setShowPDFUpload(false)}
-        />
-      )}
-
-      {showPDFList && (
-        <PDFList
-          onClose={() => setShowPDFList(false)}
-          onSelectPDF={handlePDFSelect}
-        />
-      )}
-
-      {showRAGQuery && selectedPDF && (
-        <RAGQuery
-          selectedPDF={selectedPDF}
-          onClose={() => {
-            setShowRAGQuery(false);
-            setSelectedPDF(null);
-          }}
-          onQueryResult={handleRAGQueryResult}
         />
       )}
     </div>
