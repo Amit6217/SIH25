@@ -33,8 +33,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-400"></div>
       </div>
     );
   }
@@ -50,26 +50,19 @@ function AppContent() {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-      
+    <div className="flex h-screen bg-gray-900 relative overflow-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <main className="flex-1 flex flex-col lg:ml-0 relative z-10">
         {/* Mobile Header with Hamburger Menu */}
-        <div className="lg:hidden flex items-center justify-between p-3 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-lg">
+        <div className="lg:hidden flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
           <button
             onClick={toggleSidebar}
-            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-xl transition-all duration-300 touch-manipulation hover:scale-105 active:scale-95"
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-all duration-300 touch-manipulation hover:scale-105 active:scale-95"
             aria-label="Open sidebar"
           >
             <Menu className="h-6 w-6" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-800 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">LegalEase</h1>
+          <h1 className="text-lg font-semibold text-white">LegalEase</h1>
           <div className="w-10"></div> {/* Spacer for centering */}
         </div>
         
