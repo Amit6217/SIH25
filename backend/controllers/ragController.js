@@ -2,13 +2,14 @@ const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
+const PDF = require('../models/PDF');
 
 // RAG service configuration
 const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:8000';
 const RAG_SERVICE_TIMEOUT = 30000; // 30 seconds
 
 /**
- * Upload PDF to RAG service
+ * Upload PDF to RAG service and store in database
  */
 const uploadPDFToRAG = async (req, res) => {
   try {
@@ -19,6 +20,12 @@ const uploadPDFToRAG = async (req, res) => {
     // Validate file type
     if (!req.file.mimetype.includes('pdf')) {
       return res.status(400).json({ message: 'Only PDF files are allowed' });
+    }
+
+    // Get user ID from request (assuming auth middleware is used)
+    const userId = req.user ? req.user._id : null;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required to upload PDFs' });
     }
 
     // Create form data for RAG service
@@ -36,13 +43,29 @@ const uploadPDFToRAG = async (req, res) => {
       timeout: RAG_SERVICE_TIMEOUT
     });
 
+    // Store PDF information in database
+    const pdfRecord = new PDF({
+      pdfId: response.data.pdf_id,
+      filename: response.data.filename,
+      originalName: req.file.originalname,
+      userId: userId,
+      fileSize: req.file.size,
+      status: 'indexed',
+      indexedAt: new Date()
+    });
+
+    await pdfRecord.save();
+
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
 
     res.json({
-      message: 'PDF uploaded successfully to RAG service',
+      message: 'PDF uploaded and indexed successfully',
       pdfId: response.data.pdf_id,
       filename: response.data.filename,
+      originalName: req.file.originalname,
+      fileSize: req.file.size,
+      indexedAt: pdfRecord.indexedAt,
       ragResponse: response.data
     });
 
@@ -173,7 +196,36 @@ const resetMemory = async (req, res) => {
 };
 
 /**
- * Get list of uploaded PDFs
+ * Get user's uploaded PDFs from database
+ */
+const getUserPDFs = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    const pdfs = await PDF.find({ 
+      userId: userId, 
+      isActive: true 
+    })
+    .sort({ uploadDate: -1 })
+    .select('pdfId filename originalName uploadDate fileSize status indexedAt');
+    
+    res.json({
+      message: 'User PDFs retrieved successfully',
+      pdfs: pdfs,
+      count: pdfs.length
+    });
+
+  } catch (error) {
+    console.error('Get user PDFs error:', error);
+    res.status(500).json({
+      message: 'Failed to get user PDFs',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get list of uploaded PDFs from RAG service
  */
 const getPDFList = async (req, res) => {
   try {
@@ -272,6 +324,7 @@ module.exports = {
   uploadPDFToRAG,
   queryPDF,
   resetMemory,
+  getUserPDFs,
   getPDFList,
   deletePDF,
   getRAGHealth
