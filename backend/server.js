@@ -9,6 +9,18 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+  // Don't exit the process, just log the error
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -25,12 +37,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatgpt-clone', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatgpt-clone')
 .then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -65,10 +77,11 @@ app.get('/', (req, res) => {
       },
       rag: {
         'GET /api/rag/health': 'Check RAG service health',
-        'POST /api/rag/upload': 'Upload PDF to RAG service',
+        'POST /api/rag/upload': 'Upload PDF to RAG service (requires auth)',
         'POST /api/rag/query': 'Query PDF using RAG service',
         'POST /api/rag/memory/reset': 'Reset conversation memory',
-        'GET /api/rag/pdfs': 'Get list of uploaded PDFs',
+        'GET /api/rag/user-pdfs': 'Get user uploaded PDFs (requires auth)',
+        'GET /api/rag/pdfs': 'Get list of uploaded PDFs from RAG service',
         'DELETE /api/rag/pdf/:pdfId': 'Delete PDF from RAG service'
       },
       debug: {

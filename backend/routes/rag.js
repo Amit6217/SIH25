@@ -3,10 +3,12 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const auth = require('../middleware/auth');
 const { 
   uploadPDFToRAG, 
   queryPDF, 
   resetMemory, 
+  getUserPDFs,
   getPDFList, 
   deletePDF, 
   getRAGHealth 
@@ -66,8 +68,8 @@ router.post('/debug-query', (req, res) => {
 // Health check for RAG service
 router.get('/health', getRAGHealth);
 
-// Upload PDF to RAG service
-router.post('/upload', upload.single('pdf'), uploadPDFToRAG);
+// Upload PDF to RAG service (requires authentication)
+router.post('/upload', auth, upload.single('pdf'), uploadPDFToRAG);
 
 // Query PDF using RAG service
 router.post('/query', queryPDF);
@@ -75,7 +77,10 @@ router.post('/query', queryPDF);
 // Reset conversation memory
 router.post('/memory/reset', resetMemory);
 
-// Get list of uploaded PDFs
+// Get user's uploaded PDFs (requires authentication)
+router.get('/user-pdfs', auth, getUserPDFs);
+
+// Get list of uploaded PDFs from RAG service
 router.get('/pdfs', getPDFList);
 
 // Delete PDF from RAG service

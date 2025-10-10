@@ -1,5 +1,6 @@
 const Chat = require('../models/Chat');
-const { queryPDF } = require('./ragController');
+const axios = require('axios');
+const FormData = require('form-data');
 
 /**
  * Helper function to validate and process message data
@@ -164,6 +165,11 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'Attachments must be an array' });
     }
     
+    // If RAG is enabled, validate PDF ID
+    if (useRAG && (!pdfId || typeof pdfId !== 'string' || pdfId.trim() === '')) {
+      return res.status(400).json({ message: 'PDF ID is required when using RAG' });
+    }
+    
     const chat = await Chat.findOne({ 
       _id: chatId, 
       userId: userId, 
@@ -193,54 +199,58 @@ const sendMessage = async (req, res) => {
     // If RAG is enabled and PDF ID is provided, use RAG service
     if (useRAG && pdfId) {
       try {
-        // Create a mock request/response for RAG controller
-        const ragReq = {
-          body: {
-            pdfId: pdfId,
-            question: content,
-            sessionId: chatId // Use chatId as sessionId for conversation continuity
+        console.log('Calling RAG service directly:', {
+          pdfId,
+          question: content,
+          sessionId: chatId
+        });
+
+        // Create form data for RAG service
+        const formData = new FormData();
+        formData.append('pdf_id', pdfId);
+        formData.append('question', content);
+        formData.append('session_id', chatId);
+
+        // Call RAG service directly
+        const ragResponse = await axios.post('http://localhost:8000/pdf/query', formData, {
+          headers: {
+            ...formData.getHeaders(),
+          },
+          timeout: 30000
+        });
+
+        aiResponse = {
+          content: ragResponse.data.answer,
+          role: 'assistant',
+          timestamp: new Date(),
+          metadata: {
+            ragMetadata: ragResponse.data.metadata,
+            sessionId: ragResponse.data.session_id,
+            source: 'RAG',
+            pdfId: pdfId
           }
         };
-        
-        const ragRes = {
-          json: (data) => {
-            aiResponse = {
-              content: data.answer,
-              role: 'assistant',
-              timestamp: new Date(),
-              metadata: {
-                ragMetadata: data.metadata,
-                sessionId: data.sessionId,
-                source: 'RAG'
-              }
-            };
-          },
-          status: (code) => ({
-            json: (data) => {
-              throw new Error(`RAG service error: ${data.message || 'Unknown error'}`);
-            }
-          })
-        };
-        
-        await queryPDF(ragReq, ragRes);
-        
+
+        console.log('RAG service response:', ragResponse.data);
+
       } catch (ragError) {
         console.error('RAG query failed:', ragError);
         // Fallback to regular AI response if RAG fails
         aiResponse = {
-          content: `I received your message: "${content}". RAG processing failed, but I'm here to help with your question.`,
+          content: `I received your question about the PDF: "${content}". However, I encountered an issue processing your request: ${ragError.message}. Please try again or contact support.`,
           role: 'assistant',
           timestamp: new Date(),
           metadata: {
             source: 'fallback',
-            ragError: ragError.message
+            ragError: ragError.message,
+            pdfId: pdfId
           }
         };
       }
     } else {
       // Regular AI response (simulated)
       aiResponse = {
-        content: `I received your message: "${content}". This is a simulated AI response. In a real implementation, this would be processed by an AI service like OpenAI's GPT.`,
+        content: `I received your message: "${content}". This is a simulated AI response. To get answers from your PDFs, please upload a PDF first and then ask questions with useRAG: true and provide the pdfId.`,
         role: 'assistant',
         timestamp: new Date(),
         metadata: {
