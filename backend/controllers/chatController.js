@@ -87,7 +87,17 @@ const processMessageData = (msg) => {
 
 const createChat = async (req, res) => {
   try {
-    const { title = 'New Chat', messages = [], userId = 'default-user' } = req.body;
+    const { title = 'New Chat', messages = [] } = req.body;
+    const userId = req.user._id; // Use authenticated user ID
+    
+    // Input validation
+    if (title && typeof title !== 'string') {
+      return res.status(400).json({ message: 'Title must be a string' });
+    }
+    
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ message: 'Messages must be an array' });
+    }
     
     const chat = new Chat({
       title,
@@ -105,7 +115,7 @@ const createChat = async (req, res) => {
 
 const getChats = async (req, res) => {
   try {
-    const { userId = 'default-user' } = req.query;
+    const userId = req.user._id; // Use authenticated user ID
     const chats = await Chat.find({ userId: userId, isActive: true })
       .sort({ updatedAt: -1 })
       .select('title messages createdAt updatedAt');
@@ -120,7 +130,7 @@ const getChats = async (req, res) => {
 const getChat = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { userId = 'default-user' } = req.query;
+    const userId = req.user._id; // Use authenticated user ID
     
     const chat = await Chat.findOne({ 
       _id: chatId, 
@@ -142,7 +152,17 @@ const getChat = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { content, attachments = [], pdfId, useRAG = false, userId = 'default-user' } = req.body;
+    const { content, attachments = [], pdfId, useRAG = false } = req.body;
+    const userId = req.user._id; // Use authenticated user ID
+    
+    // Input validation
+    if (!content || typeof content !== 'string' || content.trim() === '') {
+      return res.status(400).json({ message: 'Message content is required and cannot be empty' });
+    }
+    
+    if (!Array.isArray(attachments)) {
+      return res.status(400).json({ message: 'Attachments must be an array' });
+    }
     
     const chat = await Chat.findOne({ 
       _id: chatId, 
@@ -259,7 +279,13 @@ const sendMessage = async (req, res) => {
 const updateChat = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { title, userId = 'default-user' } = req.body;
+    const { title } = req.body;
+    const userId = req.user._id; // Use authenticated user ID
+    
+    // Input validation
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+      return res.status(400).json({ message: 'Title is required and cannot be empty' });
+    }
     
     const chat = await Chat.findOneAndUpdate(
       { _id: chatId, userId: userId, isActive: true },
@@ -281,7 +307,7 @@ const updateChat = async (req, res) => {
 const deleteChat = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { userId = 'default-user' } = req.body;
+    const userId = req.user._id; // Use authenticated user ID
     
     const chat = await Chat.findOneAndUpdate(
       { _id: chatId, userId: userId },

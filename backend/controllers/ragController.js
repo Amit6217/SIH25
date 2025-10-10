@@ -75,9 +75,16 @@ const queryPDF = async (req, res) => {
   try {
     const { pdfId, question, sessionId = 'default' } = req.body;
 
-    if (!pdfId || !question) {
+    // Input validation
+    if (!pdfId || typeof pdfId !== 'string' || pdfId.trim() === '') {
       return res.status(400).json({
-        message: 'PDF ID and question are required'
+        message: 'PDF ID is required and must be a non-empty string'
+      });
+    }
+
+    if (!question || typeof question !== 'string' || question.trim() === '') {
+      return res.status(400).json({
+        message: 'Question is required and must be a non-empty string'
       });
     }
 
