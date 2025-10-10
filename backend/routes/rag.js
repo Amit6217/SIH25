@@ -7,6 +7,7 @@ const auth = require('../middleware/auth');
 const { 
   uploadPDFToRAG, 
   queryPDF, 
+  queryLatestPDF,
   resetMemory, 
   getUserPDFs,
   getPDFList, 
@@ -73,6 +74,9 @@ router.post('/upload', auth, upload.single('pdf'), uploadPDFToRAG);
 
 // Query PDF using RAG service
 router.post('/query', queryPDF);
+
+// Query latest PDF using RAG service (requires authentication)
+router.post('/query-latest', auth, queryLatestPDF);
 
 // Reset conversation memory
 router.post('/memory/reset', resetMemory);
