@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Volume2 } from 'lucide-react';
+import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Volume2, Upload, Search } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import api from '../utils/api';
+import PDFUpload from './PDFUpload';
+import PDFList from './PDFList';
+import RAGQuery from './RAGQuery';
 
 const ChatInterface = () => {
   const { chatId } = useParams();
@@ -15,6 +18,10 @@ const ChatInterface = () => {
   const [chatTitle, setChatTitle] = useState('New Chat');
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [showPDFUpload, setShowPDFUpload] = useState(false);
+  const [showPDFList, setShowPDFList] = useState(false);
+  const [showRAGQuery, setShowRAGQuery] = useState(false);
+  const [selectedPDF, setSelectedPDF] = useState(null);
   const messagesEndRef = useRef(null);
   const speechRecognitionRef = useRef(null);
 
@@ -251,6 +258,91 @@ const ChatInterface = () => {
     }
   };
 
+  // RAG-related handlers
+  const handlePDFUploadSuccess = (pdfData) => {
+    console.log('PDF uploaded successfully:', pdfData);
+    // You can add additional logic here, like showing a success message
+  };
+
+  const handlePDFSelect = (pdf) => {
+    setSelectedPDF(pdf);
+    setShowRAGQuery(true);
+    setShowPDFList(false);
+  };
+
+  const handleRAGQueryResult = async (result) => {
+    console.log('RAG query result:', result);
+    
+    // Add the question and answer as chat messages
+    const userMessage = {
+      _id: `user_${Date.now()}`,
+      content: result.question,
+      role: 'user',
+      timestamp: new Date(),
+      attachments: [{
+        _id: `att_${Date.now()}`,
+        name: result.pdf.originalName,
+        type: 'document',
+        size: result.pdf.fileSize
+      }]
+    };
+
+    const aiMessage = {
+      _id: `ai_${Date.now()}`,
+      content: result.answer,
+      role: 'assistant',
+      timestamp: new Date(),
+      metadata: {
+        source: 'RAG',
+        pdfId: result.pdf.pdfId,
+        pdfName: result.pdf.originalName,
+        sessionId: result.sessionId
+      }
+    };
+
+    // Add messages to the current chat
+    setMessages(prev => [...prev, userMessage, aiMessage]);
+
+    // If we're in a chat, save the messages to the backend
+    if (chatId) {
+      try {
+        // Add user message
+        await api.post(`/chats/${chatId}/messages`, {
+          content: userMessage.content,
+          attachments: userMessage.attachments
+        });
+
+        // Add AI response
+        await api.post(`/chats/${chatId}/messages`, {
+          content: aiMessage.content,
+          role: 'assistant',
+          metadata: aiMessage.metadata
+        });
+      } catch (error) {
+        console.error('Error saving RAG messages to chat:', error);
+      }
+    } else {
+      // If no chat exists, create a new one
+      try {
+        const response = await api.post('/chats', {
+          title: `RAG Query: ${result.pdf.originalName}`,
+          messages: [userMessage, aiMessage]
+        });
+        
+        const newChat = response.data;
+        navigate(`/chat/${newChat._id}`);
+        setMessages(newChat.messages);
+        setChatTitle(newChat.title);
+      } catch (error) {
+        console.error('Error creating new chat for RAG result:', error);
+      }
+    }
+
+    // Close the query modal
+    setShowRAGQuery(false);
+    setSelectedPDF(null);
+  };
+
   return (
     <div className="flex flex-col h-full bg-white/60 backdrop-blur-xl relative">
       {/* Header - Hidden on mobile, shown on desktop */}
@@ -273,6 +365,16 @@ const ChatInterface = () => {
             >
               <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-white/80 backdrop-blur-sm text-gray-800 border border-white/20 shadow-lg'} rounded-2xl px-4 py-3 hover:scale-[1.02] transition-all duration-300`}>
                 <p className="text-sm">{message.content}</p>
+                
+                {/* RAG Source Indicator */}
+                {message.metadata && message.metadata.source === 'RAG' && (
+                  <div className="mt-2 px-2 py-1 bg-blue-100/80 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 text-xs text-blue-700">
+                      <FileText className="h-3 w-3" />
+                      <span>Answer from: {message.metadata.pdfName}</span>
+                    </div>
+                  </div>
+                )}
                 
                 {message.attachments && message.attachments.length > 0 && (
                   <div className="mt-2 space-y-1">
@@ -334,7 +436,7 @@ const ChatInterface = () => {
 
       {/* Input Area */}
       <div className="border-t border-white/20 p-2 lg:p-4 bg-white/60 backdrop-blur-xl">
-        <div className="flex items-center gap-2 lg:gap-2 gap-1"> {/* Reduced gap on mobile */}
+        <div className="flex items-center gap-1 lg:gap-2"> {/* Reduced gap on mobile */}
           {/* File Upload */}
           <div {...getRootProps()} className="cursor-pointer">
             <input {...getInputProps()} />
@@ -345,6 +447,26 @@ const ChatInterface = () => {
               <Paperclip className="h-5 w-5" />
             </button>
           </div>
+
+          {/* PDF Upload for RAG */}
+          <button
+            type="button"
+            onClick={() => setShowPDFUpload(true)}
+            className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-green-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-green-200 hover:shadow-lg"
+            title="Upload PDF for RAG"
+          >
+            <Upload className="h-5 w-5" />
+          </button>
+
+          {/* PDF List for RAG */}
+          <button
+            type="button"
+            onClick={() => setShowPDFList(true)}
+            className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-blue-600 hover:bg-white/60 rounded-xl transition-all duration-300 touch-manipulation hover:scale-110 active:scale-95 backdrop-blur-sm border border-white/20 hover:border-blue-200 hover:shadow-lg"
+            title="View PDFs for RAG"
+          >
+            <Search className="h-5 w-5" />
+          </button>
 
           {/* Voice Input */}
           <button
@@ -408,6 +530,32 @@ const ChatInterface = () => {
           </div>
         )}
       </div>
+
+      {/* RAG Modals */}
+      {showPDFUpload && (
+        <PDFUpload
+          onUploadSuccess={handlePDFUploadSuccess}
+          onClose={() => setShowPDFUpload(false)}
+        />
+      )}
+
+      {showPDFList && (
+        <PDFList
+          onClose={() => setShowPDFList(false)}
+          onSelectPDF={handlePDFSelect}
+        />
+      )}
+
+      {showRAGQuery && selectedPDF && (
+        <RAGQuery
+          selectedPDF={selectedPDF}
+          onClose={() => {
+            setShowRAGQuery(false);
+            setSelectedPDF(null);
+          }}
+          onQueryResult={handleRAGQueryResult}
+        />
+      )}
     </div>
   );
 };
