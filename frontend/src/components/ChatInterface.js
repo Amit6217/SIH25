@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Send, Mic, MicOff, FileText, Upload } from 'lucide-react';
 import api from '../utils/api';
@@ -19,6 +19,18 @@ const ChatInterface = () => {
   const speechRecognitionRef = useRef(null);
 
   // Load chat data when chatId changes
+  const loadChat = useCallback(async () => {
+    try {
+      const response = await api.get(`/chats/${chatId}`);
+      const chat = response.data;
+      setMessages(chat.messages || []);
+      setChatTitle(chat.title || 'New Chat');
+    } catch (error) {
+      console.error('Error loading chat:', error);
+      navigate('/');
+    }
+  }, [chatId, navigate]);
+
   useEffect(() => {
     if (chatId) {
       loadChat();
@@ -27,7 +39,7 @@ const ChatInterface = () => {
       setMessages([]);
       setChatTitle('New Chat');
     }
-  }, [chatId]);
+  }, [chatId, loadChat]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -92,18 +104,6 @@ const ChatInterface = () => {
       }
     };
   }, []);
-
-  const loadChat = async () => {
-    try {
-      const response = await api.get(`/chats/${chatId}`);
-      const chat = response.data;
-      setMessages(chat.messages || []);
-      setChatTitle(chat.title || 'New Chat');
-    } catch (error) {
-      console.error('Error loading chat:', error);
-      navigate('/');
-    }
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
