@@ -34,10 +34,6 @@ cp env.example .env
    - Set a secure JWT secret
    - Configure other settings as needed
 
-4. Start MongoDB (if running locally):
-```bash
-mongod
-```
 
 ## Running the Application
 

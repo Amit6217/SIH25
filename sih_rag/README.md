@@ -64,7 +64,7 @@ sih_rag/
 cd "C:\Users\shivam jat\OneDrive\Desktop\fuckSIH\sih_rag"
 
 # 2. Activate virtual environment
-.\venv\bin\activate
+.\venv\scripts\activate
 
 # 3. Run the application
 python main_simple.py
@@ -105,7 +105,7 @@ python -m venv venv
 
 **Windows:**
 ```bash
-.\venv\bin\activate
+.\venv\scripts\activate
 ```
 
 **Linux/Mac:**
@@ -246,7 +246,7 @@ curl http://localhost:8000/
 #### **1. Module Not Found Errors**
 ```bash
 # Solution: Ensure virtual environment is activated
-.\venv\bin\activate
+.\venv\scripts\activate
 ```
 
 #### **2. Port Already in Use**

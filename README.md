@@ -69,7 +69,7 @@ npm run dev
 ### 3. Frontend Setup
 ```bash
 cd frontend
-npm install
+npm run dev
 # Create .env file with REACT_APP_API_URL=http://localhost:5000/api
 npm start
 ```
@@ -80,7 +80,7 @@ npm start
 Create a `.env` file in the backend directory:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/chatgpt-clone
+MONGODB_URI=mongodb://localhost:27017/legalease
 JWT_SECRET=your-super-secret-jwt-key
 FRONTEND_URL=http://localhost:3000
 ```
@@ -202,10 +202,6 @@ REACT_APP_API_URL=http://localhost:5000/api
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
 
 ## 🆘 Support
 

@@ -212,11 +212,11 @@ const sendMessage = async (req, res) => {
         formData.append('session_id', chatId);
 
         // Call RAG service directly
-        const ragResponse = await axios.post('http://localhost:8000/pdf/query', formData, {
+        const ragResponse = await axios.post(`${process.env.RAG_SERVICE_URL}pdf/query`, formData, {
           headers: {
             ...formData.getHeaders(),
           },
-          timeout: 30000
+          timeout: 3000000
         });
 
         aiResponse = {

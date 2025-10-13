@@ -6,7 +6,7 @@ const PDF = require('../models/PDF');
 
 // RAG service configuration
 const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:8000';
-const RAG_SERVICE_TIMEOUT = 30000; // 30 seconds
+const RAG_SERVICE_TIMEOUT = 3000000; // 30 seconds
 
 /**
  * Upload PDF to RAG service and store in database
