@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, MessageSquare, Settings, LogOut, User, Trash2, X } from 'lucide-react';
+import { Plus, MessageSquare, LogOut, User, Trash2, X } from 'lucide-react';
 import api from '../utils/api';
 
 const Sidebar = ({ isOpen, onClose }) => {

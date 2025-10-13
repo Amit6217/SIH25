@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Mic, MicOff, X, FileText, Upload } from 'lucide-react';
+import { Send, Mic, MicOff, FileText, Upload } from 'lucide-react';
 import api from '../utils/api';
 import PDFUpload from './PDFUpload';
 
@@ -9,7 +9,6 @@ const ChatInterface = () => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [chatTitle, setChatTitle] = useState('New Chat');
   const [isListening, setIsListening] = useState(false);
