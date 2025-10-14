@@ -1,6 +1,6 @@
-# LegalEase Backend
+# EduSetu Backend
 
-A Node.js backend API for the LegalEase application with MongoDB, authentication, and real-time messaging.
+A Node.js backend API for the EduSetu application with MongoDB, authentication, and real-time messaging.
 
 ## Features
 

@@ -1,6 +1,6 @@
-# LegalEase Frontend
+# EduSetu Frontend
 
-A React frontend application for the LegalEase with modern UI, file upload, voice input, and real-time messaging.
+A React frontend application for the EduSetu with modern UI, file upload, voice input, and real-time messaging.
 
 ## Features
 

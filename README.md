@@ -1,6 +1,6 @@
-# LegalEase
+# EduSetu
 
-A full-stack LegalEase built with React, Node.js, and MongoDB featuring user authentication, real-time messaging, file uploads, and voice input.
+A full-stack EduSetu built with React, Node.js, and MongoDB featuring user authentication, real-time messaging, file uploads, and voice input.
 
 ## 🚀 Features
 
@@ -80,7 +80,7 @@ npm start
 Create a `.env` file in the backend directory:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/legalease
+MONGODB_URI=mongodb://localhost:27017/EduSetu
 JWT_SECRET=your-super-secret-jwt-key
 FRONTEND_URL=http://localhost:3000
 ```

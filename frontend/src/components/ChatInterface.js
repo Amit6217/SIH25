@@ -41,6 +41,11 @@ const ChatInterface = () => {
     }
   }, [chatId, loadChat]);
 
+  // Ensure scroll to bottom on initial mount
+  useEffect(() => {
+    scrollToBottom();
+  }, []);
+
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -136,10 +141,46 @@ const ChatInterface = () => {
     if (!inputMessage.trim()) return;
 
     const messageContent = inputMessage;
-    
-    // Clear input immediately for better UX
+
+    // If PDF is required but not uploaded, show assistant message
+    if (!latestPDF) {
+      const assistantMessage = {
+        _id: `assistant_${Date.now()}`,
+        content: "Please upload a PDF first to ask questions about it.",
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      setInputMessage('');
+      setIsLoading(false);
+      setTimeout(() => {
+        scrollToBottom();
+      }, 0);
+      return;
+    }
+
+    // Show user query immediately
+    const userMessage = {
+      _id: `user_${Date.now()}`,
+      content: messageContent,
+      role: 'user',
+      timestamp: new Date(),
+      attachments: latestPDF
+        ? [{
+            _id: `att_${Date.now()}`,
+            name: latestPDF.originalName,
+            type: 'document',
+            size: latestPDF.size || 0
+          }]
+        : []
+    };
+    setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+
+    setTimeout(() => {
+      scrollToBottom();
+    }, 0);
 
     try {
       // Check if this is a PDF question and we have a PDF uploaded
@@ -200,7 +241,7 @@ const ChatInterface = () => {
           // Create new chat for RAG conversation
           try {
             const chatResponse = await api.post('/chats', {
-              title: `PDF Query: ${response.data.pdfInfo.originalName}`,
+              title: `${response.data.pdfInfo.originalName}`,
               messages: [userMessage, aiMessage]
             });
             
@@ -307,7 +348,7 @@ const ChatInterface = () => {
       <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 py-8 lg:py-12">
-            <h2 className="text-xl font-medium mb-2 text-white">Welcome to LegalEase</h2>
+            <h2 className="text-xl font-medium mb-2 text-white">Welcome to EduSetu</h2>
             <p className="text-gray-500">Start a conversation by typing a message below</p>
           </div>
         ) : (
