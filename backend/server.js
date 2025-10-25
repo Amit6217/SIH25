@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const { startKeepAlive } = require('./utils/keepalive');
 
 // Load environment variables
 dotenv.config();
@@ -26,8 +27,8 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ["GET", "POST"]
-  }
+    methods: ['GET', 'POST'],
+  },
 });
 
 // Middleware
@@ -37,12 +38,13 @@ app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatgpt-clone')
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
+mongoose
+  .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatgpt-clone')
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -61,19 +63,20 @@ app.get('/', (req, res) => {
         'POST /api/auth/register': 'Register a new user',
         'POST /api/auth/login': 'Login user',
         'GET /api/auth/me': 'Get current user (requires auth)',
-        'POST /api/auth/logout': 'Logout user (requires auth)'
+        'POST /api/auth/logout': 'Logout user (requires auth)',
       },
       chats: {
         'POST /api/chats': 'Create a new chat (requires auth)',
         'GET /api/chats': 'Get user chats (requires auth)',
         'GET /api/chats/:chatId': 'Get specific chat (requires auth)',
         'PUT /api/chats/:chatId': 'Update chat title (requires auth)',
-        'POST /api/chats/:chatId/messages': 'Send message to chat (requires auth)',
-        'DELETE /api/chats/:chatId': 'Delete chat (requires auth)'
+        'POST /api/chats/:chatId/messages':
+          'Send message to chat (requires auth)',
+        'DELETE /api/chats/:chatId': 'Delete chat (requires auth)',
       },
       upload: {
         'POST /api/upload/single': 'Upload single file (requires auth)',
-        'POST /api/upload/multiple': 'Upload multiple files (requires auth)'
+        'POST /api/upload/multiple': 'Upload multiple files (requires auth)',
       },
       rag: {
         'GET /api/rag/health': 'Check RAG service health',
@@ -82,14 +85,14 @@ app.get('/', (req, res) => {
         'POST /api/rag/memory/reset': 'Reset conversation memory',
         'GET /api/rag/user-pdfs': 'Get user uploaded PDFs (requires auth)',
         'GET /api/rag/pdfs': 'Get list of uploaded PDFs from RAG service',
-        'DELETE /api/rag/pdf/:pdfId': 'Delete PDF from RAG service'
+        'DELETE /api/rag/pdf/:pdfId': 'Delete PDF from RAG service',
       },
       debug: {
         'POST /api/debug/test-message-processing': 'Test message processing',
-        'GET /api/debug/test-schema': 'Test schema validation'
-      }
+        'GET /api/debug/test-schema': 'Test schema validation',
+      },
     },
-    note: 'All chat and upload routes require authentication. Include Authorization header with Bearer token.'
+    note: 'All chat and upload routes require authentication. Include Authorization header with Bearer token.',
   });
 });
 
@@ -124,7 +127,13 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+
+  // Start keep-alive pings once the server starts
+  startKeepAlive([
+    process.env.BACKEND_URL,
+    process.env.RAG_SERVICE_URL,
+  ]);
 });
 
 // Graceful shutdown
