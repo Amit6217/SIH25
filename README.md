@@ -54,7 +54,7 @@ A full-stack EduSetu built with React, Node.js, and MongoDB featuring user authe
 ### 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd chatgpt-clone
+cd SIH25
 ```
 
 ### 2. Backend Setup
