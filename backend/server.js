@@ -129,11 +129,11 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 
+  // Define URLs for keep-alive, using the server's own address
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+
   // Start keep-alive pings once the server starts
-  startKeepAlive([
-    process.env.BACKEND_URL,
-    process.env.RAG_SERVICE_URL,
-  ]);
+  startKeepAlive([backendUrl, process.env.RAG_SERVICE_URL]);
 });
 
 // Graceful shutdown

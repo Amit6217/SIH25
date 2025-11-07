@@ -1,12 +1,15 @@
 const axios = require('axios');
 
-function startKeepAlive(urls, interval = 10 * 60 * 1000) { // every 10 minutes
-  if (!urls || urls.length === 0) {
-    console.warn('⚠️ No URLs provided for keep-alive.');
+function startKeepAlive(urls, interval = 10 * 60 * 1000) {
+  // every 10 minutes
+  const validUrls = urls.filter((url) => url);
+
+  if (validUrls.length === 0) {
+    console.warn('⚠️ No valid URLs provided for keep-alive.');
     return;
   }
 
-  console.log('🕒 Keep-alive service started for:', urls);
+  console.log('🕒 Keep-alive service started for:', validUrls);
 
   const ping = async (url) => {
     try {
@@ -18,8 +21,8 @@ function startKeepAlive(urls, interval = 10 * 60 * 1000) { // every 10 minutes
   };
 
   // Immediately ping once, then repeat
-  urls.forEach(ping);
-  setInterval(() => urls.forEach(ping), interval);
+  validUrls.forEach(ping);
+  setInterval(() => validUrls.forEach(ping), interval);
 }
 
 module.exports = { startKeepAlive };
