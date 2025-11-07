@@ -191,12 +191,11 @@ const ChatInterface = () => {
         if (chatId) {
           // Existing chat: just add the AI message
           setMessages(prev => [...prev, aiMessage]);
-          // Persist AI message
-          await api.post(`/chats/${chatId}/messages`, {
-            content: aiMessage.content,
-            role: 'assistant',
-            metadata: aiMessage.metadata,
-          });
+          // Persist both the user's message and the AI's response
+          await api.post(`/chats/${chatId}/add-message`, [
+            optimisticUserMessage,
+            aiMessage
+          ]);
         } else {
           // New chat: create it with both user and AI messages
           const finalUserMessage = {

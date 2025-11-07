@@ -336,6 +336,43 @@ const deleteChat = async (req, res) => {
   }
 };
 
+const addMessage = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user._id;
+    
+    // The body can contain a single message object or an array of messages
+    const messagesToAdd = Array.isArray(req.body) ? req.body : [req.body];
+
+    if (messagesToAdd.length === 0) {
+      return res.status(400).json({ message: 'No messages to add' });
+    }
+
+    const chat = await Chat.findOne({ 
+      _id: chatId, 
+      userId: userId, 
+      isActive: true 
+    });
+    
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    // Process and push new messages
+    messagesToAdd.forEach(msg => {
+      chat.messages.push(processMessageData(msg));
+    });
+    
+    await chat.save();
+    
+    res.status(201).json(chat);
+
+  } catch (error) {
+    console.error('Add message error:', error);
+    res.status(500).json({ message: 'Server error adding message', error: error.message });
+  }
+};
+
 module.exports = {
   createChat,
   getChats,
@@ -343,5 +380,6 @@ module.exports = {
   sendMessage,
   updateChat,
   deleteChat,
-  processMessageData
+  processMessageData,
+  addMessage
 };
