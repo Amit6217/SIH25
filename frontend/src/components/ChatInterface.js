@@ -317,7 +317,7 @@ const ChatInterface = () => {
                       remarkPlugins={[remarkGfm]}
                       components={{
                         // Custom renderer for links to open in a new tab
-                        a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" />
+                        a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer">{props.children}</a>
                       }}
                     >
                       {message.content}
