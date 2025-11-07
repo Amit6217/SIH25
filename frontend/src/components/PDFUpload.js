@@ -183,7 +183,7 @@ const PDFUpload = ({ onUploadSuccess, onClose }) => {
               </div>
               {uploadStatus.data && (
                 <div className="mt-2 text-sm text-gray-600">
-                  <p>PDF ID: {uploadStatus.data.pdfId}</p>
+                  <p>File: {uploadStatus.data.originalName}</p>
                   <p>Status: Indexed</p>
                 </div>
               )}

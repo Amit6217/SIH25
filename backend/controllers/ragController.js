@@ -6,42 +6,58 @@ const PDF = require('../models/PDF');
 
 // RAG service configuration
 const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:8000';
-const RAG_SERVICE_TIMEOUT = 3000000; // 30 seconds
+const RAG_SERVICE_TIMEOUT = 300000; // 5 minutes
 
 /**
  * Upload PDF to RAG service and store in database
  */
 const uploadPDFToRAG = async (req, res) => {
+  console.log('--- Starting PDF Upload to RAG ---');
   try {
     if (!req.file) {
+      console.log('Error: No file received from multer.');
       return res.status(400).json({ message: 'No PDF file uploaded' });
     }
+    console.log('Step 1: File received from client:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path,
+    });
 
     // Validate file type
     if (!req.file.mimetype.includes('pdf')) {
+      console.log(`Error: Invalid file type: ${req.file.mimetype}`);
       return res.status(400).json({ message: 'Only PDF files are allowed' });
     }
 
     // Get user ID from request (assuming auth middleware is used)
     const userId = req.user ? req.user._id : null;
     if (!userId) {
+      console.log('Error: No user ID found in request.');
       return res.status(401).json({ message: 'Authentication required to upload PDFs' });
     }
+    console.log(`Step 2: User authenticated with ID: ${userId}`);
 
     // Create form data for RAG service
     const formData = new FormData();
-    formData.append('file', fs.createReadStream(req.file.path), {
+    const fileStream = fs.createReadStream(req.file.path);
+    formData.append('file', fileStream, {
       filename: req.file.originalname,
       contentType: req.file.mimetype
     });
+    console.log('Step 3: Created form-data to send to RAG service.');
 
     // Upload to RAG service
-    const response = await axios.post(`${RAG_SERVICE_URL}/pdf/upload`, formData, {
+    const ragUrl = `${RAG_SERVICE_URL}/pdf/upload`;
+    console.log(`Step 4: Sending file to RAG service at ${ragUrl}`);
+    const response = await axios.post(ragUrl, formData, {
       headers: {
         ...formData.getHeaders(),
       },
       timeout: RAG_SERVICE_TIMEOUT
     });
+    console.log('Step 5: Received successful response from RAG service:', response.data);
 
     // Store PDF information in database
     const pdfRecord = new PDF({
@@ -55,9 +71,11 @@ const uploadPDFToRAG = async (req, res) => {
     });
 
     await pdfRecord.save();
+    console.log('Step 6: Saved PDF record to database.');
 
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
+    console.log('Step 7: Cleaned up temporary file.');
 
     res.json({
       message: 'PDF uploaded and indexed successfully',
@@ -68,9 +86,21 @@ const uploadPDFToRAG = async (req, res) => {
       indexedAt: pdfRecord.indexedAt,
       ragResponse: response.data
     });
+    console.log('--- PDF Upload to RAG Finished Successfully ---');
 
   } catch (error) {
-    console.error('RAG PDF upload error:', error);
+    console.error('--- RAG PDF Upload Error ---');
+    console.error('Error message:', error.message);
+    if (error.response) {
+      console.error('Error response from RAG service:', {
+        status: error.response.status,
+        data: error.response.data,
+      });
+    } else if (error.request) {
+      console.error('Error: No response received from RAG service. Is it running?');
+    } else {
+      console.error('Error setting up the request:', error.message);
+    }
     
     // Clean up uploaded file on error
     if (req.file && fs.existsSync(req.file.path)) {

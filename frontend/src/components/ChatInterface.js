@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Send, Mic, MicOff, FileText, Upload } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import api from '../utils/api';
 import PDFUpload from './PDFUpload';
 
@@ -142,25 +144,8 @@ const ChatInterface = () => {
 
     const messageContent = inputMessage;
 
-    // If PDF is required but not uploaded, show assistant message
-    if (!latestPDF) {
-      const assistantMessage = {
-        _id: `assistant_${Date.now()}`,
-        content: "Please upload a PDF first to ask questions about it.",
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      setInputMessage('');
-      setIsLoading(false);
-      setTimeout(() => {
-        scrollToBottom();
-      }, 0);
-      return;
-    }
-
-    // Show user query immediately
-    const userMessage = {
+    // Optimistically add user message to the UI
+    const optimisticUserMessage = {
       _id: `user_${Date.now()}`,
       content: messageContent,
       role: 'user',
@@ -170,42 +155,26 @@ const ChatInterface = () => {
             _id: `att_${Date.now()}`,
             name: latestPDF.originalName,
             type: 'document',
-            size: latestPDF.size || 0
+            size: latestPDF.size || 0,
           }]
-        : []
+        : [],
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    setMessages(prev => [...prev, optimisticUserMessage]);
     setInputMessage('');
     setIsLoading(true);
-
-    setTimeout(() => {
-      scrollToBottom();
-    }, 0);
+    setTimeout(() => scrollToBottom(), 0);
 
     try {
-      // Check if this is a PDF question and we have a PDF uploaded
-      if (latestPDF && messageContent.trim()) {
-        // This is a PDF question - use RAG
+      const isRagQuery = latestPDF && messageContent.trim();
+
+      if (isRagQuery) {
+        // RAG Query Logic
         const response = await api.post('/rag/query-latest', {
           question: messageContent.trim(),
-          sessionId: `session_${Date.now()}`
+          sessionId: `session_${Date.now()}`,
         });
 
-        // Add user message
-        const userMessage = {
-          _id: `user_${Date.now()}`,
-          content: messageContent,
-          role: 'user',
-          timestamp: new Date(),
-          attachments: [{
-            _id: `att_${Date.now()}`,
-            name: response.data.pdfInfo.originalName,
-            type: 'document',
-            size: 0 // Size not available in response
-          }]
-        };
-
-        // Add AI response
         const aiMessage = {
           _id: `ai_${Date.now()}`,
           content: response.data.answer,
@@ -215,77 +184,61 @@ const ChatInterface = () => {
             source: 'RAG',
             pdfId: response.data.pdfInfo.pdfId,
             pdfName: response.data.pdfInfo.originalName,
-            sessionId: response.data.sessionId
-          }
+            sessionId: response.data.sessionId,
+          },
         };
 
-        // Add messages to the current chat
-        setMessages(prev => [...prev, userMessage, aiMessage]);
-
-        // Save to backend if in a chat
         if (chatId) {
-          try {
-            await api.post(`/chats/${chatId}/messages`, {
-              content: userMessage.content,
-              attachments: userMessage.attachments
-            });
-            await api.post(`/chats/${chatId}/messages`, {
-              content: aiMessage.content,
-              role: 'assistant',
-              metadata: aiMessage.metadata
-            });
-          } catch (error) {
-            console.error('Error saving RAG messages to chat:', error);
-          }
+          // Existing chat: just add the AI message
+          setMessages(prev => [...prev, aiMessage]);
+          // Persist AI message
+          await api.post(`/chats/${chatId}/messages`, {
+            content: aiMessage.content,
+            role: 'assistant',
+            metadata: aiMessage.metadata,
+          });
         } else {
-          // Create new chat for RAG conversation
-          try {
-            const chatResponse = await api.post('/chats', {
-              title: `${response.data.pdfInfo.originalName}`,
-              messages: [userMessage, aiMessage]
-            });
-            
-            const newChat = chatResponse.data;
-            navigate(`/chat/${newChat._id}`);
-            setMessages(newChat.messages);
-            setChatTitle(newChat.title);
-          } catch (error) {
-            console.error('Error creating new chat for RAG result:', error);
-          }
+          // New chat: create it with both user and AI messages
+          const finalUserMessage = {
+            ...optimisticUserMessage,
+            attachments: [{
+              ...optimisticUserMessage.attachments[0],
+              name: response.data.pdfInfo.originalName,
+            }],
+          };
+
+          const chatResponse = await api.post('/chats', {
+            title: response.data.pdfInfo.originalName,
+            messages: [finalUserMessage, aiMessage],
+          });
+
+          const newChat = chatResponse.data;
+          navigate(`/chat/${newChat._id}`);
+          setMessages(newChat.messages); // Use messages from server
+          setChatTitle(newChat.title);
         }
       } else {
-        // Regular chat message
+        // Regular Chat Logic
         if (chatId) {
-          // Send message to existing chat
           const response = await api.post(`/chats/${chatId}/messages`, {
-            content: messageContent
+            content: messageContent,
           });
-          
-          // Update messages with the response from server
           setMessages(response.data.chat.messages);
-          
-          // Update chat title if it's empty and this is the first user message
+
           const updatedChat = response.data.chat;
           if (!updatedChat.title && updatedChat.messages.length > 0) {
             const firstUserMessage = updatedChat.messages.find(msg => msg.role === 'user');
             if (firstUserMessage) {
               const newTitle = firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
-              // Update chat title
               await api.put(`/chats/${chatId}`, { title: newTitle });
               setChatTitle(newTitle);
             }
           }
         } else {
-          // Create new chat with first message
           const response = await api.post('/chats', {
             title: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
-            messages: [{
-              content: messageContent,
-              role: 'user',
-              timestamp: new Date()
-            }]
+            messages: [optimisticUserMessage],
           });
-          
           const newChat = response.data;
           navigate(`/chat/${newChat._id}`);
           setMessages(newChat.messages);
@@ -294,8 +247,9 @@ const ChatInterface = () => {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      // Restore the input on error
+      // Restore input and remove optimistic message on error
       setInputMessage(messageContent);
+      setMessages(prev => prev.filter(m => m._id !== optimisticUserMessage._id));
     } finally {
       setIsLoading(false);
     }
@@ -358,7 +312,21 @@ const ChatInterface = () => {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
               <div className={`max-w-xs lg:max-w-md ${message.role === 'user' ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-100 border border-gray-700'} rounded-lg px-4 py-3 transition-all duration-300`}>
-                <p className="text-sm">{message.content}</p>
+                {message.role === 'assistant' ? (
+                  <div className="prose prose-sm prose-invert">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        // Custom renderer for links to open in a new tab
+                        a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" />
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm">{message.content}</p>
+                )}
                 
                 {/* RAG Source Indicator */}
                 {message.metadata && message.metadata.source === 'RAG' && (
